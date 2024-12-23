@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+	"bundler",
+	"basic-clipper",
+]
+
+[workspace.package]
+version  = "0.1.0"
+edition = "2021"
+homepage = "https://github.com/insomnimus/basic-clipper"
+repository = "https://github.com/insomnimus/basic-clipper"
+license = "MIT"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+opt-level = 3
+panic = "abort"
+strip = true
+lto = true
+
+[workspace.dependencies]
+# nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", rev = "40269e1" }
+# nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug", rev = "40269e1" }
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug" }
+nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug" }
+valib = { git = "https://github.com/SolarLiner/valib", rev = "b22772d" }
