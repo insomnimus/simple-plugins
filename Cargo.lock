@@ -608,7 +608,7 @@ dependencies = [
 [[package]]
 name = "nih_plug"
 version = "0.0.0"
-source = "git+https://github.com/robbert-vdh/nih-plug#40269e13940689c6b5432cc16782964ae33f3d12"
+source = "git+https://github.com/robbert-vdh/nih-plug?rev=16c6c58f4d9f08c9c515c991c218bff235cff6e2#16c6c58f4d9f08c9c515c991c218bff235cff6e2"
 dependencies = [
  "anyhow",
  "anymap",
@@ -638,7 +638,7 @@ dependencies = [
 [[package]]
 name = "nih_plug_derive"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/nih-plug#40269e13940689c6b5432cc16782964ae33f3d12"
+source = "git+https://github.com/robbert-vdh/nih-plug?rev=16c6c58f4d9f08c9c515c991c218bff235cff6e2#16c6c58f4d9f08c9c515c991c218bff235cff6e2"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -648,7 +648,7 @@ dependencies = [
 [[package]]
 name = "nih_plug_xtask"
 version = "0.1.0"
-source = "git+https://github.com/robbert-vdh/nih-plug#40269e13940689c6b5432cc16782964ae33f3d12"
+source = "git+https://github.com/robbert-vdh/nih-plug?rev=16c6c58f4d9f08c9c515c991c218bff235cff6e2#16c6c58f4d9f08c9c515c991c218bff235cff6e2"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -1381,7 +1381,7 @@ checksum = "adb9e6ca4f869e1180728b7950e35922a7fc6397f7b641499e8f3ef06e50dc83"
 [[package]]
 name = "valib"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "valib-core",
  "valib-filters",
@@ -1393,7 +1393,7 @@ dependencies = [
 [[package]]
 name = "valib-core"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "az",
  "nalgebra",
@@ -1408,7 +1408,7 @@ dependencies = [
 [[package]]
 name = "valib-derive"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "darling",
  "proc-macro2",
@@ -1419,7 +1419,7 @@ dependencies = [
 [[package]]
 name = "valib-filters"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "nalgebra",
  "num-traits",
@@ -1432,7 +1432,7 @@ dependencies = [
 [[package]]
 name = "valib-nih-plug"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "fundsp",
  "nih_plug",
@@ -1447,7 +1447,7 @@ dependencies = [
 [[package]]
 name = "valib-oversample"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "num-complex",
  "numeric_literals",
@@ -1460,7 +1460,7 @@ dependencies = [
 [[package]]
 name = "valib-saturators"
 version = "0.1.0"
-source = "git+https://github.com/SolarLiner/valib?rev=b22772d#b22772da6254f4972d624c3ee25a3a19e1fcefda"
+source = "git+https://github.com/SolarLiner/valib?rev=7c9041e#7c9041eb3a6ee356536702e7a1cfc7f72a854797"
 dependencies = [
  "nalgebra",
  "num-traits",

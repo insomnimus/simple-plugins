@@ -24,7 +24,7 @@ use self::dsp::{
 
 nih_export_clap!(ClipperPlugin);
 
-const OVERSAMPLE: usize = 8;
+const MAX_OVERSAMPLE: usize = 32;
 const MAX_BLOCK_SIZE: usize = 512;
 
 #[derive(Debug, Params)]
@@ -36,7 +36,7 @@ struct ClipperParams {
 	#[id = "output-gain"]
 	output_gain: FloatParam,
 	#[id = "oversample"]
-	oversample: BoolParam,
+	oversample: IntParam,
 }
 
 impl ClipperParams {
@@ -64,8 +64,18 @@ impl ClipperParams {
 				.bind_to_parameter(remote, DspParam::InputGain),
 			output_gain: p("Output Gain", 0.0, -30.0, 30.0)
 				.bind_to_parameter(remote, DspParam::OutputGain),
-			oversample: BoolParam::new("Oversample", false)
-				.bind_to_parameter(remote, DspParam::Oversample),
+			oversample: IntParam::new(
+				"Oversampling",
+				0,
+				IntRange::Linear {
+					min: 0,
+					max: usize::ilog2(MAX_OVERSAMPLE) as _,
+				},
+			)
+			.with_unit("x")
+			.with_string_to_value(formatters::s2v_i32_power_of_two())
+			.with_value_to_string(formatters::v2s_i32_power_of_two())
+			.bind_to_parameter(remote, DspParam::Oversample),
 		})
 	}
 }

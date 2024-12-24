@@ -22,8 +22,6 @@ strip = true
 lto = true
 
 [workspace.dependencies]
-# nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", rev = "40269e1" }
-# nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug", rev = "40269e1" }
-nih_plug = { git = "https://github.com/robbert-vdh/nih-plug" }
-nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug" }
-valib = { git = "https://github.com/SolarLiner/valib", rev = "b22772d" }
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", rev = "16c6c58f4d9f08c9c515c991c218bff235cff6e2" }
+nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug", rev = "16c6c58f4d9f08c9c515c991c218bff235cff6e2" }
+valib = { git = "https://github.com/SolarLiner/valib", rev = "7c9041e" }

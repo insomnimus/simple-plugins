@@ -26,7 +26,7 @@ use valib::{
 
 use crate::{
 	MAX_BLOCK_SIZE,
-	OVERSAMPLE,
+	MAX_OVERSAMPLE,
 };
 
 type Sample = AutoF32x2;
@@ -88,8 +88,7 @@ impl HasParameters for Dsp {
 	fn set_parameter(&mut self, param: Self::Name, val: f32) {
 		match param {
 			DspParam::Oversample => {
-				let val = if val > 0.51 { OVERSAMPLE } else { 1 };
-				// let val = 4;
+				let val = usize::pow(2, val as _);
 				self.inner.set_oversampling_amount(val);
 			}
 			_ => self.inner.inner.set_parameter(param, val),
@@ -130,7 +129,7 @@ pub fn create(orig_samplerate: f32) -> RemoteControlled<Dsp> {
 		output_gain: 1.0,
 	};
 
-	let inner = Oversample::new(OVERSAMPLE, MAX_BLOCK_SIZE)
+	let inner = Oversample::new(MAX_OVERSAMPLE, MAX_BLOCK_SIZE)
 		.with_dsp(orig_samplerate, BlockAdapter(dsp_inner));
 
 	RemoteControlled::new(orig_samplerate, 1e3, Dsp { inner })

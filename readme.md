@@ -5,4 +5,4 @@ This is a basic hard-clipper Clap plugin.
 - Threshold: Clipping threshold
 - Input Gain: Apply some gain before processing
 - Output Gain: Apply some gain after processing
-- Oversample: On / Off, whether to oversample
+- Oversample: Oversampling amount, up to 32x
