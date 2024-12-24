@@ -88,7 +88,8 @@ impl HasParameters for Dsp {
 	fn set_parameter(&mut self, param: Self::Name, val: f32) {
 		match param {
 			DspParam::Oversample => {
-				let val = if val < 0.5 { 1 } else { OVERSAMPLE };
+				let val = if val > 0.51 { OVERSAMPLE } else { 1 };
+				// let val = 4;
 				self.inner.set_oversampling_amount(val);
 			}
 			_ => self.inner.inner.set_parameter(param, val),
