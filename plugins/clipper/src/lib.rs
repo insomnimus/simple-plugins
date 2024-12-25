@@ -111,8 +111,8 @@ impl Plugin for ClipperPlugin {
 		},
 	}];
 	const EMAIL: &'static str = "";
-	const NAME: &'static str = "Basic Clipper";
-	const URL: &'static str = "https://github.com/insomnimus/basic-clipper";
+	const NAME: &'static str = "Simple Clipper";
+	const URL: &'static str = env!("CARGO_PKG_HOMEPAGE");
 	const VENDOR: &'static str = "Insomnia";
 	const VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -147,14 +147,14 @@ impl Plugin for ClipperPlugin {
 }
 
 impl ClapPlugin for ClipperPlugin {
-	const CLAP_DESCRIPTION: Option<&'static str> = Some("Basic hard clipper");
+	const CLAP_DESCRIPTION: Option<&'static str> = Some("Simple hard clipper");
 	const CLAP_FEATURES: &'static [ClapFeature] = &[
 		ClapFeature::AudioEffect,
 		ClapFeature::Distortion,
 		ClapFeature::Mono,
 		ClapFeature::Stereo,
 	];
-	const CLAP_ID: &'static str = "insomnia.basic-clipper";
+	const CLAP_ID: &'static str = "insomnia.simple-clipper";
 	const CLAP_MANUAL_URL: Option<&'static str> = None;
-	const CLAP_SUPPORT_URL: Option<&'static str> = None;
+	const CLAP_SUPPORT_URL: Option<&'static str> = Some(env!("CARGO_PKG_HOMEPAGE"));
 }

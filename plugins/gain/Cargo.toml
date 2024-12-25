@@ -1,7 +1,10 @@
 [package]
-name = "basic-clipper"
+name = "simple-gain"
 version.workspace = true
+rust-version.workspace = true
 edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
 license.workspace = true
 
 [lib]
@@ -9,4 +12,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 nih_plug.workspace = true
-valib = { workspace = true, features = ["saturators", "filters", "oversample", "nih-plug"] }
+simdeez.workspace = true

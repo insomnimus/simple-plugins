@@ -1,2 +1,5 @@
-[basic-clipper]
-name = "Basic Clipper"
+[simple-clipper]
+name = "Simple Clipper"
+
+[simple-gain]
+name = "Simple Gain"

@@ -1,3 +1,7 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 
-exec cargo run --bin bundler -- bundle basic-clipper "$@"
+set -ue
+
+for plugin in simple-{clipper,gain}; do
+	cargo run --bin bundler -- bundle "$plugin" "$@"
+done
