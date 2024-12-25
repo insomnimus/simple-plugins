@@ -126,7 +126,7 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "bundler"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nih_plug_xtask",
 ]
@@ -1046,15 +1046,16 @@ dependencies = [
 
 [[package]]
 name = "simple-clipper"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nih_plug",
+ "simdeez",
  "valib",
 ]
 
 [[package]]
 name = "simple-gain"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "nih_plug",
  "simdeez",
