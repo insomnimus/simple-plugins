@@ -199,10 +199,7 @@ impl Plugin for FilterPlugin {
 		self.sr = buffer_config.sample_rate;
 		self.hps.clear();
 		self.lps.clear();
-		// nih_plug::nih_log!("sample rate: {}", buffer_config.sample_rate);
 
-		// let fs = Hertz::from_hz(buffer_config.sample_rate).unwrap();
-		// let nyq = Hertz::from_hz(buffer_config.sample_rate / 2.0).unwrap();
 		let lc =
 			Coefficients::from_normalized_params(Type::LowPass, 0.5, Q_BUTTERWORTH_F32).unwrap();
 		let hc =
