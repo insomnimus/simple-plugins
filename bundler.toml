@@ -3,3 +3,6 @@ name = "Simple Clipper"
 
 [simple-gain]
 name = "Simple Gain"
+
+[simple-filter]
+name = "Simple Filter"

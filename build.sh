@@ -2,6 +2,6 @@
 
 set -ue
 
-for plugin in simple-{clipper,gain}; do
+for plugin in simple-{clipper,filter,gain}; do
 	cargo run --bin bundler -- bundle "$plugin" "$@"
 done

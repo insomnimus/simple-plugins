@@ -15,6 +15,7 @@ cd simple-plugins
 # E.g.
 cargo run --bin bundler -- bundle simple-clipper --release
 cargo run --bin bundler -- bundle simple-gain --release
+# ...and so on
 ```
 
 After building, you can copy `.clap` files in `target/bundled/` to your CLAP plugin directory.
@@ -28,6 +29,15 @@ Parameters:
 - Input Gain: Apply some gain before processing
 - Output Gain: Apply some gain after processing
 - Oversample: Oversampling amount, up to 32x
+
+### Simple Filter
+High and low-pass filters.
+
+Parameters:
+- HPF Frequency: High-pass cutoff frequency
+- HPF Q: Q value for the high-pass filter
+- LPF Frequency: Low-pass cutoff frequency
+- LPF Q: Q value for the low-pass filter
 
 ### Simple Gain
 Just gain.

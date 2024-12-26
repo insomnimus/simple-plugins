@@ -1,0 +1,15 @@
+[package]
+name = "simple-filter"
+version.workspace = true
+rust-version.workspace = true
+edition.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+nih_plug.workspace = true
+biquad.workspace = true
