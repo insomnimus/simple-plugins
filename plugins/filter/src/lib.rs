@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use filters::simper::{
+use components::simper::{
 	Coefficients,
 	Simper,
 	BUTTERWORTH_Q,

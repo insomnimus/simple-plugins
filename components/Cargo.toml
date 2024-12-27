@@ -1,5 +1,5 @@
 [package]
-name = "filters"
+name = "components"
 version.workspace = true
 rust-version.workspace = true
 edition.workspace = true

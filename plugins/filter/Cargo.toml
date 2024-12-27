@@ -13,4 +13,4 @@ crate-type = ["cdylib"]
 [dependencies]
 nih_plug.workspace = true
 # biquad.workspace = true
-filters.path = "../../filters"
+components.path = "../../components"
