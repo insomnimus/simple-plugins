@@ -18,7 +18,7 @@ pub struct Simper {
 	ic2eq: f64,
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum FilterType {
 	LowPass,
 	HighPass,
@@ -26,13 +26,12 @@ pub enum FilterType {
 	Notch,
 	AllPass,
 	Peaking,
-	#[default]
 	Bell,
 	LowShelf,
 	HighShelf,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Coefficients {
 	kind: FilterType,
 	// Mix coefficients
@@ -48,6 +47,23 @@ pub struct Coefficients {
 }
 
 impl Coefficients {
+	// For internal use. It doesn't really make sense otherwise.
+	fn new(kind: FilterType) -> Self {
+		Self {
+			kind,
+			// Mix coefficients
+			m0: 0.0,
+			m1: 0.0,
+			m2: 0.0,
+			// Filter coefficients
+			a1: 0.0,
+			a2: 0.0,
+			a3: 0.0,
+			g: 0.0,
+			k: 0.0,
+		}
+	}
+
 	fn set_coefficients(&mut self, sample_rate: f64, fq: f64, q: f64) {
 		self.g = f64::tan(M_PI * fq / sample_rate);
 		self.k = 1.0 / q;
@@ -58,10 +74,9 @@ impl Coefficients {
 	}
 
 	pub fn low_pass(sample_rate: f64, fq: f64, q: f64) -> Self {
-		let mut x = Self::default();
+		let mut x = Self::new(FilterType::LowPass);
 		x.set_coefficients(sample_rate, fq, q);
 
-		x.kind = FilterType::LowPass;
 		x.m0 = 0.0;
 		x.m1 = 0.0;
 		x.m2 = 1.0;
@@ -70,9 +85,8 @@ impl Coefficients {
 	}
 
 	pub fn high_pass(sample_rate: f64, fq: f64, q: f64) -> Self {
-		let mut x = Self::default();
+		let mut x = Self::new(FilterType::HighPass);
 		x.set_coefficients(sample_rate, fq, q);
-		x.kind = FilterType::HighPass;
 
 		x.m0 = 1.0;
 		x.m1 = -x.k;
@@ -82,9 +96,8 @@ impl Coefficients {
 	}
 
 	pub fn band_pass(sample_rate: f64, fq: f64, q: f64) -> Self {
-		let mut x = Self::default();
+		let mut x = Self::new(FilterType::BandPass);
 		x.set_coefficients(sample_rate, fq, q);
-		x.kind = FilterType::BandPass;
 
 		x.m0 = 0.0;
 		x.m1 = x.k; // paper says 1, but that is not same as RBJ bandpass
@@ -94,9 +107,8 @@ impl Coefficients {
 	}
 
 	pub fn notch(sample_rate: f64, fq: f64, q: f64) -> Self {
-		let mut x = Self::default();
+		let mut x = Self::new(FilterType::Notch);
 		x.set_coefficients(sample_rate, fq, q);
-		x.kind = FilterType::Notch;
 
 		x.m0 = 1.0;
 		x.m1 = -x.k;
@@ -106,9 +118,8 @@ impl Coefficients {
 	}
 
 	pub fn all_pass(sample_rate: f64, fq: f64, q: f64) -> Self {
-		let mut x = Self::default();
+		let mut x = Self::new(FilterType::AllPass);
 		x.set_coefficients(sample_rate, fq, q);
-		x.kind = FilterType::AllPass;
 
 		x.m0 = 1.0;
 		x.m1 = -2.0 * x.k;
@@ -119,9 +130,8 @@ impl Coefficients {
 
 	// Note: This is not the same as the RBJ peaking filter, since no db_gain.
 	pub fn peaking(sample_rate: f64, fq: f64, q: f64) -> Self {
-		let mut x = Self::default();
+		let mut x = Self::new(FilterType::Peaking);
 		x.set_coefficients(sample_rate, fq, q);
-		x.kind = FilterType::Peaking;
 
 		x.m0 = 1.0;
 		x.m1 = -x.k;
@@ -132,10 +142,7 @@ impl Coefficients {
 
 	// Note: This is the same as the RBJ peaking EQ.
 	pub fn bell(sample_rate: f64, fq: f64, q: f64, db_gain: f64) -> Self {
-		let mut x = Self {
-			kind: FilterType::Bell,
-			..Self::default()
-		};
+		let mut x = Self::new(FilterType::Bell);
 		let a = f64::powf(10.0, db_gain / 40.0);
 
 		x.g = f64::tan(M_PI * fq / sample_rate);
@@ -153,10 +160,7 @@ impl Coefficients {
 	}
 
 	pub fn low_shelf(sample_rate: f64, fq: f64, q: f64, db_gain: f64) -> Self {
-		let mut x = Self {
-			kind: FilterType::LowShelf,
-			..Self::default()
-		};
+		let mut x = Self::new(FilterType::LowShelf);
 		let a = f64::powf(10.0, db_gain / 40.0);
 
 		x.g = f64::tan(M_PI * fq / sample_rate) / f64::sqrt(a);
@@ -174,10 +178,7 @@ impl Coefficients {
 	}
 
 	pub fn high_shelf(sample_rate: f64, fq: f64, q: f64, db_gain: f64) -> Self {
-		let mut x = Self {
-			kind: FilterType::HighShelf,
-			..Self::default()
-		};
+		let mut x = Self::new(FilterType::HighShelf);
 		let a = f64::powf(10.0, db_gain / 40.0);
 
 		x.g = f64::tan(M_PI * fq / sample_rate) * f64::sqrt(a);
