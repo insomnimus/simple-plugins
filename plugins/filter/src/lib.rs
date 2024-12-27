@@ -1,6 +1,10 @@
 use std::sync::Arc;
 
-use biquad::*;
+use filters::simper::{
+	Coefficients,
+	Simper,
+	BUTTERWORTH_Q,
+};
 use nih_plug::prelude::*;
 
 nih_export_clap!(FilterPlugin);
@@ -25,7 +29,7 @@ fn fq_param(name: &str, default: f32) -> FloatParam {
 fn q_param(name: &str) -> FloatParam {
 	FloatParam::new(
 		name,
-		Q_BUTTERWORTH_F32,
+		BUTTERWORTH_Q as f32,
 		FloatRange::Skewed {
 			min: 0.1,
 			max: 4.8,
@@ -90,46 +94,45 @@ impl Default for FilterParams {
 #[derive(Default)]
 struct FilterPlugin {
 	params: Arc<FilterParams>,
-	sr: f32,
-	hps: Vec<DirectForm2Transposed<f32>>,
-	lps: Vec<DirectForm2Transposed<f32>>,
+	sr: f64,
+	hps: Vec<Simper>,
+	lps: Vec<Simper>,
 }
 
 impl FilterPlugin {
 	fn update_hp(&mut self) {
-		let hc = Coefficients::from_normalized_params(
-			Type::HighPass,
-			self.params.hp.fq.value() * 2.0 / self.sr,
-			self.params.hp.q.value(),
-		)
-		.unwrap();
+		let hc = Coefficients::high_pass(
+			self.sr,
+			self.params.hp.fq.value() as f64,
+			self.params.hp.q.value() as f64,
+		);
+
 		for f in &mut self.hps {
-			f.update_coefficients(hc)
+			f.set_parameters(hc.clone())
 		}
 	}
 
 	fn update_lp(&mut self) {
-		let lc = Coefficients::from_normalized_params(
-			Type::LowPass,
-			self.params.lp.fq.value() * 2.0 / self.sr,
-			self.params.lp.q.value(),
-		)
-		.unwrap();
+		let lc = Coefficients::low_pass(
+			self.sr,
+			self.params.lp.fq.value() as f64,
+			self.params.lp.q.value() as f64,
+		);
 
 		for f in &mut self.lps {
-			f.update_coefficients(lc)
+			f.set_parameters(lc.clone())
 		}
 	}
 
 	fn reset_hp(&mut self) {
 		for f in &mut self.hps {
-			f.reset_state();
+			f.reset();
 		}
 	}
 
 	fn reset_lp(&mut self) {
 		for f in &mut self.lps {
-			f.reset_state();
+			f.reset();
 		}
 	}
 }
@@ -196,21 +199,16 @@ impl Plugin for FilterPlugin {
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
-		self.sr = buffer_config.sample_rate;
+		self.sr = buffer_config.sample_rate as _;
 		self.hps.clear();
 		self.lps.clear();
 
-		let lc =
-			Coefficients::from_normalized_params(Type::LowPass, 0.5, Q_BUTTERWORTH_F32).unwrap();
-		let hc =
-			Coefficients::from_normalized_params(Type::HighPass, 0.0, Q_BUTTERWORTH_F32).unwrap();
-
-		let lpf = DirectForm2Transposed::new(lc);
-		let hpf = DirectForm2Transposed::new(hc);
+		let lpf = Simper::low_pass(self.sr, 20e3, BUTTERWORTH_Q);
+		let hpf = Simper::high_pass(self.sr, 20.0, BUTTERWORTH_Q);
 
 		for _ in 0..layout.main_input_channels.map_or(0, |n| n.get()) {
-			self.hps.push(hpf);
-			self.lps.push(lpf);
+			self.hps.push(hpf.clone());
+			self.lps.push(lpf.clone());
 		}
 
 		true
@@ -235,9 +233,9 @@ impl Plugin for FilterPlugin {
 			self.update_hp();
 			self.reset_lp();
 
-			for (channel, hp) in buffer.as_slice().iter_mut().zip(&mut self.hps) {
+			for (channel, hpf) in buffer.as_slice().iter_mut().zip(&mut self.hps) {
 				for sample in channel.iter_mut() {
-					*sample = hp.run(*sample);
+					*sample = hpf.process(*sample as _) as _;
 				}
 			}
 
@@ -249,9 +247,9 @@ impl Plugin for FilterPlugin {
 			self.update_lp();
 			self.reset_hp();
 
-			for (channel, lp) in buffer.as_slice().iter_mut().zip(&mut self.lps) {
+			for (channel, lpf) in buffer.as_slice().iter_mut().zip(&mut self.lps) {
 				for sample in channel.iter_mut() {
-					*sample = lp.run(*sample);
+					*sample = lpf.process(*sample as _) as _;
 				}
 			}
 
@@ -268,7 +266,7 @@ impl Plugin for FilterPlugin {
 			.zip(self.hps.iter_mut().zip(&mut self.lps))
 		{
 			for sample in channel.iter_mut() {
-				*sample = lpf.run(hpf.run(*sample));
+				*sample = lpf.process(hpf.process(*sample as _)) as _;
 			}
 		}
 
