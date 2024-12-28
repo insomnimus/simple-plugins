@@ -11,9 +11,7 @@ struct LowPass {
 }
 
 impl LowPass {
-	fn new(sr: f64) -> Self {
-		// Cut just below nyquist
-		let cutoff = sr * 0.5 * 0.98;
+	fn new(sr: f64, cutoff: f64) -> Self {
 		Self {
 			filters: core::array::from_fn(move |_| Simper::low_pass(sr, cutoff, BUTTERWORTH_Q)),
 		}
@@ -43,7 +41,10 @@ struct Inner<const N: usize> {
 
 impl<const N: usize> Inner<N> {
 	fn new(sr: f64, block_size: usize) -> Self {
-		let filters = array::from_fn(|i| LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64));
+		// Cut just below nyquist
+		let cutoff = sr * 0.5 * 0.98;
+		let filters =
+			array::from_fn(|i| LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64, cutoff));
 
 		Self {
 			buffers: array::from_fn(|i| {
@@ -55,11 +56,12 @@ impl<const N: usize> Inner<N> {
 	}
 
 	fn set_sample_rate(&mut self, sr: f64) {
-		for f in &mut self.up_filters {
-			*f = LowPass::new(sr);
+		let cutoff = sr * 0.5 * 0.98;
+		for (i, f) in self.up_filters.iter_mut().enumerate() {
+			*f = LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64, cutoff);
 		}
-		for f in &mut self.down_filters {
-			*f = LowPass::new(sr);
+		for (i, f) in self.down_filters.iter_mut().enumerate() {
+			*f = LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64, cutoff);
 		}
 	}
 
@@ -67,20 +69,17 @@ impl<const N: usize> Inner<N> {
 		debug_assert!(times <= N);
 		debug_assert_ne!(times, 0);
 
-		for stage in 0..times {
-			if stage == 0 {
-				let f = &mut self.up_filters[stage];
-				let buffer = &mut self.buffers[stage];
-				buffer.clear();
+		// First stage
+		let f = &mut self.up_filters[0];
+		let buffer = &mut self.buffers[0];
+		buffer.clear();
 
-				for sample in input {
-					buffer.push(f.process(*sample as f64) as _);
-					buffer.push(f.process(0.0) as _);
-				}
+		for sample in input {
+			buffer.push(f.process(*sample as f64) as _);
+			buffer.push(f.process(0.0) as _);
+		}
 
-				continue;
-			}
-
+		for stage in 1..times {
 			let [ref mut input, ref mut buffer] = &mut self.buffers[stage - 1..stage + 1] else {
 				unreachable!();
 			};
@@ -101,24 +100,22 @@ impl<const N: usize> Inner<N> {
 		debug_assert!(times <= N);
 		debug_assert_ne!(times, 0);
 
-		for stage in (0..times).rev() {
-			if stage == 0 {
-				let f = &mut self.down_filters[stage];
-				let buffer = &self.buffers[stage];
-				for (i, out_sample) in output.iter_mut().enumerate() {
-					*out_sample = f.process(buffer[i / 2] as _) as _;
-				}
-			} else {
-				let f = &mut self.down_filters[stage];
-				let [ref mut output, ref mut buffer] = &mut self.buffers[stage - 1..stage + 1]
-				else {
-					unreachable!();
-				};
+		for stage in (1..times).rev() {
+			let f = &mut self.down_filters[stage];
+			let [ref mut output, ref mut buffer] = &mut self.buffers[stage - 1..stage + 1] else {
+				unreachable!();
+			};
 
-				for (i, out_sample) in output.iter_mut().enumerate() {
-					*out_sample = f.process(buffer[i / 2] as _) as _;
-				}
+			for (i, out_sample) in output.iter_mut().enumerate() {
+				*out_sample = f.process(buffer[i * 2] as _) as _;
 			}
+		}
+
+		// First (last) stage
+		let f = &mut self.down_filters[0];
+		let buffer = &self.buffers[0];
+		for (i, out_sample) in output.iter_mut().enumerate() {
+			*out_sample = f.process(buffer[i * 2] as _) as _;
 		}
 	}
 
