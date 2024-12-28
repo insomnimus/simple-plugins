@@ -76,7 +76,7 @@ impl<const N: usize> Inner<N> {
 		buffer.clear();
 
 		for sample in input {
-			buffer.push(f.process(*sample as f64) as _);
+			buffer.push(f.process(*sample as f64 + *sample as f64) as _);
 			buffer.push(f.process(0.0) as _);
 		}
 
@@ -89,7 +89,7 @@ impl<const N: usize> Inner<N> {
 			buffer.clear();
 
 			for sample in input {
-				buffer.push(f.process(*sample as _) as _);
+				buffer.push(f.process(*sample as f64 + *sample as f64) as _);
 				buffer.push(f.process(0.0) as _);
 			}
 		}
@@ -109,6 +109,7 @@ impl<const N: usize> Inner<N> {
 
 			for (i, out_sample) in output.iter_mut().enumerate() {
 				*out_sample = f.process(buffer[i * 2] as _) as _;
+				let _ = f.process(buffer[i * 2 + 1] as _);
 			}
 		}
 
@@ -117,6 +118,7 @@ impl<const N: usize> Inner<N> {
 		let buffer = &self.buffers[0];
 		for (i, out_sample) in output.iter_mut().enumerate() {
 			*out_sample = f.process(buffer[i * 2] as _) as _;
+			let _ = f.process(buffer[i * 2 + 1] as _);
 		}
 	}
 
