@@ -5,6 +5,7 @@ use crate::simper::{
 	BUTTERWORTH_Q,
 };
 
+/// 4 cascaded Simper low-pass filters.
 #[derive(Debug, Clone)]
 struct LowPass {
 	filters: [Simper; 4],
