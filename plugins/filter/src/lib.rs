@@ -1,9 +1,13 @@
 use std::sync::Arc;
 
-use components::simper::{
-	Coefficients,
-	Simper,
-	BUTTERWORTH_Q,
+use components::{
+	simper::{
+		Coefficients,
+		Simper,
+		BUTTERWORTH_Q,
+	},
+	Component,
+	ComponentMeta,
 };
 use nih_plug::prelude::*;
 

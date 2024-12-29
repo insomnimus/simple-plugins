@@ -2,4 +2,5 @@
 
 set -ue
 
-cargo run --bin bundler "$@"
+cd -- "$(dirname -- "$0")"
+exec cargo run --bin bundler "$@"

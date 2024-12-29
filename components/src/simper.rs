@@ -1,5 +1,10 @@
 //! State variable filter (SVF), designed by Andrew Simper of Cytomic.
 
+use crate::{
+	Component,
+	ComponentMeta,
+};
+
 const M_PI: f64 = core::f64::consts::PI;
 pub const BUTTERWORTH_Q: f64 = 0.707;
 
@@ -245,11 +250,6 @@ impl Simper {
 		self.x.kind
 	}
 
-	pub fn reset(&mut self) {
-		self.ic1eq = 0.0;
-		self.ic2eq = 0.0;
-	}
-
 	/// Update coefficients without resetting state.
 	///
 	/// `db_gain` is ignored if [`self.filter_type()`](Self::filter_type) is not `FilterType::Bell`, `FilterType::LowShelf` or `FilterType::HighShelf`.
@@ -277,10 +277,19 @@ impl Simper {
 	pub fn set_parameters(&mut self, x: Coefficients) {
 		self.x = x;
 	}
+}
 
+impl ComponentMeta for Simper {
+	fn reset(&mut self) {
+		self.ic1eq = 0.0;
+		self.ic2eq = 0.0;
+	}
+}
+
+impl Component for Simper {
 	/// Process a sample.
 	#[inline]
-	pub fn process(&mut self, v0: f64) -> f64 {
+	fn process(&mut self, v0: f64) -> f64 {
 		let x = &mut self.x;
 		let v3 = v0 - self.ic2eq;
 		let v1 = x.a1 * self.ic1eq + x.a2 * v3;

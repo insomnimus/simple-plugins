@@ -1,31 +1,16 @@
-mod dsp;
+mod simd;
 
 use std::sync::Arc;
 
-use nih_plug::prelude::*;
-use valib::{
-	contrib::nih_plug::{
-		process_buffer_simd,
-		BindToParameter,
-	},
-	dsp::{
-		parameter::{
-			RemoteControl,
-			RemoteControlled,
-		},
-		DSPMeta,
-	},
-};
-
-use self::dsp::{
-	Dsp,
-	DspParam,
+use components::Oversampler;
+use nih_plug::{
+	prelude::*,
+	util::db_to_gain,
 };
 
 nih_export_clap!(ClipperPlugin);
 
-const MAX_OVERSAMPLE: usize = 32;
-const MAX_BLOCK_SIZE: usize = 512;
+const MAX_OVERSAMPLE: usize = 4;
 
 #[derive(Debug, Params)]
 struct ClipperParams {
@@ -39,8 +24,8 @@ struct ClipperParams {
 	oversample: IntParam,
 }
 
-impl ClipperParams {
-	fn new(remote: &RemoteControl<DspParam>) -> Arc<Self> {
+impl Default for ClipperParams {
+	fn default() -> Self {
 		let p = |name: &str, default: f32, min: f32, max: f32| {
 			FloatParam::new(
 				name,
@@ -57,93 +42,35 @@ impl ClipperParams {
 			// .with_string_to_value(formatters::s2v_f32_gain_to_db())
 		};
 
-		Arc::new(Self {
-			threshold: p("Threshold", 0.0, -45.0, 15.0)
-				.bind_to_parameter(remote, DspParam::Threshold),
-			input_gain: p("Input Gain", 0.0, -30.0, 30.0)
-				.bind_to_parameter(remote, DspParam::InputGain),
-			output_gain: p("Output Gain", 0.0, -30.0, 30.0)
-				.bind_to_parameter(remote, DspParam::OutputGain),
+		Self {
+			threshold: p("Threshold", 0.0, -45.0, 15.0),
+			input_gain: p("Input Gain", 0.0, -30.0, 30.0),
+			output_gain: p("Output Gain", 0.0, -30.0, 30.0),
 			oversample: IntParam::new(
 				"Oversampling",
 				0,
 				IntRange::Linear {
 					min: 0,
-					max: usize::ilog2(MAX_OVERSAMPLE) as _,
+					max: MAX_OVERSAMPLE as _,
 				},
 			)
-			.with_unit("x")
 			.with_string_to_value(formatters::s2v_i32_power_of_two())
-			.with_value_to_string(formatters::v2s_i32_power_of_two())
-			.bind_to_parameter(remote, DspParam::Oversample),
-		})
+			.with_value_to_string(Arc::new(|n| {
+				if n == 0 {
+					"Off".to_owned()
+				} else {
+					format!("{}x", usize::pow(2, n as _))
+				}
+			})),
+		}
 	}
 }
 
+#[derive(Default)]
 struct ClipperPlugin {
-	dsp: RemoteControlled<Dsp>,
 	params: Arc<ClipperParams>,
-}
-
-impl Default for ClipperPlugin {
-	fn default() -> Self {
-		let dsp = dsp::create(44100.0);
-		let params = ClipperParams::new(&dsp.proxy);
-		Self { dsp, params }
-	}
-}
-
-impl Plugin for ClipperPlugin {
-	type BackgroundTask = ();
-	type SysExMessage = ();
-
-	const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[AudioIOLayout {
-		main_input_channels: Some(new_nonzero_u32(2)),
-		main_output_channels: Some(new_nonzero_u32(2)),
-		aux_input_ports: &[],
-		aux_output_ports: &[],
-		names: PortNames {
-			layout: Some("Stereo"),
-			main_input: Some("Input"),
-			main_output: Some("Output"),
-			aux_inputs: &[],
-			aux_outputs: &[],
-		},
-	}];
-	const EMAIL: &'static str = "";
-	const NAME: &'static str = "Simple Clipper";
-	const URL: &'static str = env!("CARGO_PKG_HOMEPAGE");
-	const VENDOR: &'static str = "Insomnia";
-	const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-
-	fn params(&self) -> Arc<dyn Params> {
-		self.params.clone()
-	}
-
-	fn initialize(
-		&mut self,
-		_audio_io_layout: &AudioIOLayout,
-		buffer_config: &BufferConfig,
-		_context: &mut impl InitContext<Self>,
-	) -> bool {
-		self.dsp.set_samplerate(buffer_config.sample_rate);
-		true
-	}
-
-	fn reset(&mut self) {
-		self.dsp.reset();
-	}
-
-	fn process(
-		&mut self,
-		buffer: &mut Buffer,
-		_aux: &mut AuxiliaryBuffers,
-		_context: &mut impl ProcessContext<Self>,
-	) -> ProcessStatus {
-		_context.set_latency_samples(self.dsp.latency() as _);
-		process_buffer_simd::<_, _, MAX_BLOCK_SIZE>(&mut self.dsp, buffer);
-		ProcessStatus::Normal
-	}
+	os: Vec<Oversampler<MAX_OVERSAMPLE>>,
+	is_rendering: bool,
 }
 
 impl ClapPlugin for ClipperPlugin {
@@ -157,4 +84,103 @@ impl ClapPlugin for ClipperPlugin {
 	const CLAP_ID: &'static str = "insomnia.simple-clipper";
 	const CLAP_MANUAL_URL: Option<&'static str> = None;
 	const CLAP_SUPPORT_URL: Option<&'static str> = Some(env!("CARGO_PKG_HOMEPAGE"));
+}
+
+impl Plugin for ClipperPlugin {
+	type BackgroundTask = ();
+	type SysExMessage = ();
+
+	const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[
+		AudioIOLayout {
+			main_input_channels: Some(new_nonzero_u32(2)),
+			main_output_channels: Some(new_nonzero_u32(2)),
+			aux_input_ports: &[],
+			aux_output_ports: &[],
+			names: PortNames {
+				layout: Some("Stereo"),
+				main_input: Some("Input"),
+				main_output: Some("Output"),
+				aux_inputs: &[],
+				aux_outputs: &[],
+			},
+		},
+		AudioIOLayout {
+			main_input_channels: Some(new_nonzero_u32(1)),
+			main_output_channels: Some(new_nonzero_u32(1)),
+			aux_input_ports: &[],
+			aux_output_ports: &[],
+			names: PortNames {
+				layout: Some("Mono"),
+				main_input: Some("Input"),
+				main_output: Some("Output"),
+				aux_inputs: &[],
+				aux_outputs: &[],
+			},
+		},
+	];
+	const EMAIL: &'static str = "";
+	const NAME: &'static str = "Simple Clipper";
+	const URL: &'static str = env!("CARGO_PKG_HOMEPAGE");
+	const VENDOR: &'static str = "Insomnia";
+	const VERSION: &'static str = env!("CARGO_PKG_VERSION");
+
+	fn params(&self) -> Arc<dyn Params> {
+		self.params.clone()
+	}
+
+	fn initialize(
+		&mut self,
+		layout: &AudioIOLayout,
+		buffer_config: &BufferConfig,
+		_context: &mut impl InitContext<Self>,
+	) -> bool {
+		self.is_rendering = buffer_config.process_mode == ProcessMode::Offline;
+
+		self.os.clear();
+		self.os.extend(
+			(0..layout.main_input_channels.map_or(0, |n| n.get()))
+				.map(|_| Oversampler::new(buffer_config.max_buffer_size as _, 0)),
+		);
+
+		true
+	}
+
+	fn reset(&mut self) {
+		for o in &mut self.os {
+			o.reset();
+		}
+	}
+
+	fn process(
+		&mut self,
+		buffer: &mut Buffer,
+		_aux: &mut AuxiliaryBuffers,
+		context: &mut impl ProcessContext<Self>,
+	) -> ProcessStatus {
+		let times = if self.is_rendering {
+			usize::max(3, self.params.oversample.value() as _)
+		} else {
+			self.params.oversample.value() as _
+		};
+
+		for o in &mut self.os {
+			o.set_oversampling_times(times);
+		}
+
+		let latency = self.os.first().map(|o| o.latency()).unwrap_or(0);
+		context.set_latency_samples(latency as _);
+
+		let threshold = db_to_gain(self.params.threshold.value()) as f64;
+		let input_gain = db_to_gain(self.params.input_gain.value()) as f64;
+		let output_gain = db_to_gain(self.params.output_gain.value()) as f64;
+
+		for (os, channel) in self.os.iter_mut().zip(buffer.as_slice().iter_mut()) {
+			os.process_block(channel, |samples| {
+				// nih_plug::nih_log!("processing: {} samples", samples.len());
+				simd::process_runtime_select(threshold, input_gain, output_gain, samples)
+			});
+		}
+
+		ProcessStatus::Normal
+	}
 }

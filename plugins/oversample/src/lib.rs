@@ -5,7 +5,7 @@ use nih_plug::prelude::*;
 
 nih_export_clap!(OversamplePlugin);
 
-const OS: usize = 4;
+const OS: usize = 8;
 
 #[derive(Debug, Params)]
 struct OsParams {
@@ -38,8 +38,8 @@ impl Default for OversamplePlugin {
 	fn default() -> Self {
 		Self {
 			params: Arc::new(OsParams::default()),
-			l: Oversampler::new(48000.0, 64),
-			r: Oversampler::new(48000.0, 64),
+			l: Oversampler::new(1, 0),
+			r: Oversampler::new(1, 0),
 		}
 	}
 }
@@ -86,12 +86,12 @@ impl Plugin for OversamplePlugin {
 
 	fn initialize(
 		&mut self,
-		layout: &AudioIOLayout,
+		_layout: &AudioIOLayout,
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
-		self.l = Oversampler::new(buffer_config.sample_rate as _, 64);
-		self.r = Oversampler::new(buffer_config.sample_rate as _, 64);
+		self.l = Oversampler::new(buffer_config.max_buffer_size as _, 0);
+		self.r = Oversampler::new(buffer_config.max_buffer_size as _, 0);
 
 		true
 	}
@@ -100,12 +100,16 @@ impl Plugin for OversamplePlugin {
 		&mut self,
 		buffer: &mut Buffer,
 		_aux: &mut AuxiliaryBuffers,
-		_context: &mut impl ProcessContext<Self>,
+		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
 		if let [l, r] = buffer.as_slice() {
 			let times = self.params.times.value();
-			self.l.process_block(l, times as _, |_| ());
-			self.r.process_block(r, times as _, |_| ());
+			self.l.set_oversampling_times(times as _);
+			self.r.set_oversampling_times(times as _);
+			context.set_latency_samples(self.l.latency() as _);
+			nih_plug::nih_log!("latency: {}", self.l.latency());
+			self.l.process_block(l, |_| ());
+			self.r.process_block(r, |_| ());
 		}
 
 		ProcessStatus::Normal

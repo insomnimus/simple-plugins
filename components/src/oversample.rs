@@ -1,100 +1,60 @@
 use core::array;
 
-use crate::simper::{
-	Simper,
-	BUTTERWORTH_Q,
+use crate::{
+	half_band::HalfBand,
+	Component,
+	ComponentMeta,
 };
-
-/// 4 cascaded Simper low-pass filters.
-#[derive(Debug, Clone)]
-struct LowPass {
-	filters: [Simper; 4],
-}
-
-impl LowPass {
-	fn new(sr: f64, cutoff: f64) -> Self {
-		Self {
-			filters: core::array::from_fn(move |_| Simper::low_pass(sr, cutoff, BUTTERWORTH_Q)),
-		}
-	}
-
-	fn process(&mut self, mut sample: f64) -> f64 {
-		for f in &mut self.filters {
-			sample = f.process(sample);
-		}
-
-		sample
-	}
-
-	fn reset(&mut self) {
-		for f in &mut self.filters {
-			f.reset();
-		}
-	}
-}
 
 #[derive(Debug, Clone)]
 struct Inner<const N: usize> {
-	buffers: [Vec<f32>; N],
-	down_filters: [LowPass; N],
-	up_filters: [LowPass; N],
+	buffer: Box<[f64]>,
+	down_filters: [HalfBand<6>; N],
+	up_filters: [HalfBand<6>; N],
 }
 
 impl<const N: usize> Inner<N> {
-	fn new(sr: f64, block_size: usize) -> Self {
-		// Cut just below nyquist
-		let cutoff = sr * 0.5 * 0.98;
-		let filters =
-			array::from_fn(|i| LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64, cutoff));
+	fn new(block_size: usize) -> Self {
+		let filters = array::from_fn(|_| HalfBand::steep_order12());
 
 		Self {
-			buffers: array::from_fn(|i| {
-				Vec::with_capacity(usize::pow(2, i as u32 + 1) * block_size)
-			}),
+			buffer: vec![0.0; block_size * usize::pow(2, N as _)].into_boxed_slice(),
 			down_filters: filters.clone(),
 			up_filters: filters,
 		}
 	}
 
-	fn set_sample_rate(&mut self, sr: f64) {
-		let cutoff = sr * 0.5 * 0.98;
-		for (i, f) in self.up_filters.iter_mut().enumerate() {
-			*f = LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64, cutoff);
-		}
-		for (i, f) in self.down_filters.iter_mut().enumerate() {
-			*f = LowPass::new(sr * usize::pow(2, i as u32 + 1) as f64, cutoff);
-		}
-	}
-
-	fn upsample(&mut self, input: &[f32], times: usize) -> &mut [f32] {
+	fn upsample(&mut self, input: &[f32], times: usize) -> &mut [f64] {
 		debug_assert!(times <= N);
 		debug_assert_ne!(times, 0);
 
 		// First stage
 		let f = &mut self.up_filters[0];
-		let buffer = &mut self.buffers[0];
-		buffer.clear();
 
-		for sample in input {
-			buffer.push(f.process(*sample as f64 + *sample as f64) as _);
-			buffer.push(f.process(0.0) as _);
+		for (i, &sample) in input.iter().enumerate() {
+			self.buffer[i * 2] = f.process(sample as f64 + sample as f64);
+			self.buffer[i * 2 + 1] = f.process(0.0);
 		}
 
 		for stage in 1..times {
-			let [ref mut input, ref mut buffer] = &mut self.buffers[stage - 1..stage + 1] else {
-				unreachable!();
-			};
+			// We have to do it in 2 iterations: zero-stuff, and then apply the filters.
+			// This is because there's only one buffer.
+			let len = input.len() * usize::pow(2, stage as u32 + 1);
+			// Also have to iterate backwards so we don't overwrite any samples.
+			for i in (0..len / 2).rev() {
+				// Double the sample to preserve levels.
+				self.buffer[i * 2] = self.buffer[i] + self.buffer[i];
+				self.buffer[i * 2 + 1] = 0.0;
+			}
 
+			// Apply the filter.
 			let f = &mut self.up_filters[stage];
-			buffer.clear();
-
-			for sample in input {
-				buffer.push(f.process(*sample as f64 + *sample as f64) as _);
-				buffer.push(f.process(0.0) as _);
+			for sample in &mut self.buffer[..len] {
+				*sample = f.process(*sample);
 			}
 		}
 
-		&mut self.buffers[times - 1]
+		&mut self.buffer[..input.len() * usize::pow(2, times as u32)]
 	}
 
 	fn downsample(&mut self, output: &mut [f32], times: usize) {
@@ -103,22 +63,22 @@ impl<const N: usize> Inner<N> {
 
 		for stage in (1..times).rev() {
 			let f = &mut self.down_filters[stage];
-			let [ref mut output, ref mut buffer] = &mut self.buffers[stage - 1..stage + 1] else {
-				unreachable!();
-			};
-
-			for (i, out_sample) in output.iter_mut().enumerate() {
-				*out_sample = f.process(buffer[i * 2] as _) as _;
-				let _ = f.process(buffer[i * 2 + 1] as _);
+			// The length of the buffer we're about to "produce".
+			let len = output.len() * usize::pow(2, stage as u32);
+			for i in 0..len {
+				self.buffer[i] = f.process(self.buffer[i * 2]);
+				// The filter needs to consume the other sample as well to be accurate.
+				let _ = f.process(self.buffer[i * 2 + 1]);
 			}
 		}
 
 		// First (last) stage
+		// Same as the loop above except as an optimization, we're writing directly to the output buffer.
+		// Also we need to cast samples to f32 anyway...
 		let f = &mut self.down_filters[0];
-		let buffer = &self.buffers[0];
-		for (i, out_sample) in output.iter_mut().enumerate() {
-			*out_sample = f.process(buffer[i * 2] as _) as _;
-			let _ = f.process(buffer[i * 2 + 1] as _);
+		for (i, sample) in output.iter_mut().enumerate() {
+			*sample = f.process(self.buffer[i * 2]) as f32;
+			let _ = f.process(self.buffer[i * 2 + 1]);
 		}
 	}
 
@@ -132,45 +92,108 @@ impl<const N: usize> Inner<N> {
 	}
 }
 
+/// An oversampler with a built-in anti-aliasing filter.
+///
+/// The `N` constant refers to maximum number of oversampling stages; this means that the actual oversampling ratio is `pow(2, N)`.
+/// Also note that `N` can't be greater than `8` as there's absolutely no reason to use ratios above it (and the memory use scales linearly with the oversampling ratio, so it quickly becomes impossible).
 #[derive(Debug, Clone)]
 pub struct Oversampler<const N: usize> {
+	times: usize,
 	block_size: usize,
 	inner: Inner<N>,
 }
 
 impl<const N: usize> Oversampler<N> {
-	pub fn new(sample_rate: f64, block_size: usize) -> Self {
+	/// Create a new `Oversampler`.
+	///
+	/// ## Panics
+	/// Panics if `N > 8` or `initial_os_times > N` or `block_size == 0`.
+	pub fn new(block_size: usize, initial_os_times: usize) -> Self {
 		assert_ne!(block_size, 0);
+		assert!(N <= 8, "oversampling 2^{N} times is extremely wasteful and unnecessary; the const generic value must be below 9");
+		assert!(
+			initial_os_times <= N,
+			"the oversampling amount can't be more than N ({initial_os_times} and {N})"
+		);
 
 		Self {
 			block_size,
-			inner: Inner::new(sample_rate, block_size),
+			times: initial_os_times,
+			inner: Inner::new(block_size),
 		}
 	}
 
-	pub fn process_block<F>(&mut self, samples: &mut [f32], times: usize, mut process: F)
-	where
-		F: for<'a> FnMut(&'a mut [f32]),
-	{
+	/// Set the number of active oversampling stages. Note that the final oversampling amount will be `pow(2, times)`.
+	pub fn set_oversampling_times(&mut self, times: usize) {
 		debug_assert!(times <= N);
+		let times = usize::min(times, N);
 
-		if times == 0 {
+		#[allow(clippy::comparison_chain)]
+		if self.times < times {
+			self.reset();
+		} else if self.times > times {
+			// Only reset the inactive filters.
+			// This probably helps the quality.
+			for f in &mut self.inner.up_filters[times..] {
+				f.reset();
+			}
+			for f in &mut self.inner.down_filters.iter_mut().rev().take(times) {
+				f.reset();
+			}
+		}
+
+		if self.times != times {
+			self.inner.reset();
+		}
+		self.times = usize::min(times, N);
+	}
+
+	/// Get the latency of this [Oversampler], in samples.
+	pub fn latency(&self) -> usize {
+		match self.times {
+			0 => 0,
+			1 => 13,
+			2 => 19,
+			3 => 22,
+			4 => 23,
+			5 => 24,
+			// It actually maxes out at 25 samples (well, it keeps going fractionally but never gets there).
+			_ => 25,
+		}
+	}
+
+	/// Process a block of samples, applying a closure to the oversampled samples transparently.
+	///
+	/// The `process` function will be given the upsampled signal; at the end, the downsampled samples are written to the input `samples` automatically.
+	pub fn process_block<F>(&mut self, samples: &mut [f32], mut process: F)
+	where
+		F: for<'a> FnMut(&'a mut [f64]),
+	{
+		if self.times == 0 {
+			// Temporarily use self.inner.buffer for f64 samples.
+			for block in samples.chunks_mut(self.block_size) {
+				for (i, sample) in block.iter().enumerate() {
+					self.inner.buffer[i] = *sample as f64;
+				}
+
+				process(&mut self.inner.buffer[..block.len()]);
+
+				// Copy it back to `block`.
+				for (i, sample) in block.iter_mut().enumerate() {
+					*sample = self.inner.buffer[i] as _;
+				}
+			}
 			return;
 		}
 
-		let times = usize::min(times, N);
-
 		for chunk in samples.chunks_mut(self.block_size) {
-			process(self.inner.upsample(chunk, times));
-			self.inner.downsample(chunk, times);
+			process(self.inner.upsample(chunk, self.times));
+			self.inner.downsample(chunk, self.times);
 		}
 	}
 
+	/// Reset state associated with this [Oversampler].
 	pub fn reset(&mut self) {
 		self.inner.reset();
-	}
-
-	pub fn set_sample_rate(&mut self, sample_rate: f64) {
-		self.inner.set_sample_rate(sample_rate);
 	}
 }

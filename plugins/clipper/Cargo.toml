@@ -10,5 +10,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 nih_plug.workspace = true
-# simdeez.workspace = true
-valib = { workspace = true, features = ["oversample", "nih-plug"] }
+simdeez.workspace = true
+components.path = "../../components"
+# valib = { workspace = true, features = ["oversample", "nih-plug"] }

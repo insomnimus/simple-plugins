@@ -4,8 +4,6 @@ Bunch of simple CLAP plugins.
 ## Build Instructions
 You need to have [Rust installed](https://rustup.rs/).
 
-Note that you need nightly to build these plugins due to the [valib](https://github.com/SolarLiner/valib) dependency using nightly.
-
 ```shell
 git clone --depth=1 https://github.com/insomnimus/simple-plugins
 cd simple-plugins
