@@ -9,6 +9,8 @@ git clone --depth=1 https://github.com/insomnimus/simple-plugins
 cd simple-plugins
 # If you can execute shell scripts:
 ./build.sh --release
+# Or if you can run Powershell scripts:
+./build.ps1 --release
 # Otherwise, build plugins manually, one by one
 # E.g.
 cargo run --bin bundler -- bundle simple-clipper --release
