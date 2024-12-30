@@ -87,7 +87,7 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "bundler"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "nih_plug_xtask",
 ]
@@ -143,7 +143,10 @@ source = "git+https://github.com/robbert-vdh/clap-sys.git?branch=feature/cstr-ma
 
 [[package]]
 name = "components"
-version = "0.1.4"
+version = "0.1.5"
+dependencies = [
+ "nih_plug",
+]
 
 [[package]]
 name = "core-foundation"
@@ -440,7 +443,7 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "oversample"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "components",
  "nih_plug",
@@ -648,7 +651,7 @@ dependencies = [
 
 [[package]]
 name = "simple-clipper"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "components",
  "nih_plug",
@@ -657,7 +660,7 @@ dependencies = [
 
 [[package]]
 name = "simple-filter"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "components",
  "nih_plug",
@@ -665,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "simple-gain"
-version = "0.1.4"
+version = "0.1.5"
 dependencies = [
  "nih_plug",
  "simdeez",

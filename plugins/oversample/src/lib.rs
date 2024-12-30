@@ -3,12 +3,12 @@
 
 use std::sync::Arc;
 
-use components::Oversampler;
+use components::Oversampler2 as Oversampler;
 use nih_plug::prelude::*;
 
 nih_export_clap!(OversamplePlugin);
 
-const OS: usize = 8;
+const OS: u8 = 8;
 
 #[derive(Debug, Params)]
 struct OsParams {
@@ -33,16 +33,16 @@ impl Default for OsParams {
 
 struct OversamplePlugin {
 	params: Arc<OsParams>,
-	l: Oversampler<OS>,
-	r: Oversampler<OS>,
+	l: Oversampler,
+	r: Oversampler,
 }
 
 impl Default for OversamplePlugin {
 	fn default() -> Self {
 		Self {
 			params: Arc::new(OsParams::default()),
-			l: Oversampler::new(1, 0),
-			r: Oversampler::new(1, 0),
+			l: Oversampler::new(1, OS, 0),
+			r: Oversampler::new(1, OS, 0),
 		}
 	}
 }
@@ -93,8 +93,8 @@ impl Plugin for OversamplePlugin {
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
-		self.l = Oversampler::new(buffer_config.max_buffer_size as _, 0);
-		self.r = Oversampler::new(buffer_config.max_buffer_size as _, 0);
+		self.l = Oversampler::new(buffer_config.max_buffer_size as _, OS, 0);
+		self.r = Oversampler::new(buffer_config.max_buffer_size as _, OS, 0);
 
 		true
 	}
@@ -107,8 +107,8 @@ impl Plugin for OversamplePlugin {
 	) -> ProcessStatus {
 		if let [l, r] = buffer.as_slice() {
 			let times = self.params.times.value();
-			self.l.set_oversampling_times(times as _);
-			self.r.set_oversampling_times(times as _);
+			self.l.set_oversampling_factor(times as _);
+			self.r.set_oversampling_factor(times as _);
 			context.set_latency_samples(self.l.latency() as _);
 			nih_plug::nih_log!("latency: {}", self.l.latency());
 			self.l.process_block(l, |_| ());

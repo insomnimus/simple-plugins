@@ -4,13 +4,10 @@
 use std::sync::Arc;
 
 use components::{
-	simper::{
-		Coefficients,
-		Simper,
-		BUTTERWORTH_Q,
-	},
 	Component,
 	ComponentMeta,
+	SimperCoefficients,
+	SimperFilter,
 };
 use nih_plug::prelude::*;
 
@@ -36,7 +33,7 @@ fn fq_param(name: &str, default: f32) -> FloatParam {
 fn q_param(name: &str) -> FloatParam {
 	FloatParam::new(
 		name,
-		BUTTERWORTH_Q as f32,
+		SimperFilter::BUTTERWORTH_Q as f32,
 		FloatRange::Skewed {
 			min: 0.1,
 			max: 4.8,
@@ -102,13 +99,13 @@ impl Default for FilterParams {
 struct FilterPlugin {
 	params: Arc<FilterParams>,
 	sr: f64,
-	hps: Vec<Simper>,
-	lps: Vec<Simper>,
+	hps: Vec<SimperFilter>,
+	lps: Vec<SimperFilter>,
 }
 
 impl FilterPlugin {
 	fn update_hp(&mut self) {
-		let hc = Coefficients::high_pass(
+		let hc = SimperCoefficients::high_pass(
 			self.sr,
 			self.params.hp.fq.value() as f64,
 			self.params.hp.q.value() as f64,
@@ -120,7 +117,7 @@ impl FilterPlugin {
 	}
 
 	fn update_lp(&mut self) {
-		let lc = Coefficients::low_pass(
+		let lc = SimperCoefficients::low_pass(
 			self.sr,
 			self.params.lp.fq.value() as f64,
 			self.params.lp.q.value() as f64,
@@ -210,8 +207,8 @@ impl Plugin for FilterPlugin {
 		self.hps.clear();
 		self.lps.clear();
 
-		let lpf = Simper::low_pass(self.sr, 20e3, BUTTERWORTH_Q);
-		let hpf = Simper::high_pass(self.sr, 20.0, BUTTERWORTH_Q);
+		let lpf = SimperFilter::low_pass(self.sr, 20e3, SimperFilter::BUTTERWORTH_Q);
+		let hpf = SimperFilter::high_pass(self.sr, 20.0, SimperFilter::BUTTERWORTH_Q);
 
 		for _ in 0..layout.main_input_channels.map_or(0, |n| n.get()) {
 			self.hps.push(hpf.clone());

@@ -3,13 +3,16 @@
 
 mod half_band;
 mod oversample;
-pub mod simper;
+mod simper;
 mod stilson_moog;
 
 pub use self::{
 	half_band::HalfBand,
-	oversample::Oversampler,
-	simper::Simper,
+	oversample::*,
+	simper::{
+		SimperCoefficients,
+		SimperFilter,
+	},
 	stilson_moog::LowPassSM,
 };
 

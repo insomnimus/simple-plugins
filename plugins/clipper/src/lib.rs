@@ -5,7 +5,7 @@ mod simd;
 
 use std::sync::Arc;
 
-use components::Oversampler;
+use components::Oversampler2 as Oversampler;
 use nih_plug::{
 	prelude::*,
 	util::db_to_gain,
@@ -13,7 +13,7 @@ use nih_plug::{
 
 nih_export_clap!(ClipperPlugin);
 
-const MAX_OVERSAMPLE: usize = 4;
+const MAX_OVERSAMPLE: u8 = 4;
 
 #[derive(Debug, Params)]
 struct ClipperParams {
@@ -72,7 +72,7 @@ impl Default for ClipperParams {
 #[derive(Default)]
 struct ClipperPlugin {
 	params: Arc<ClipperParams>,
-	os: Vec<Oversampler<MAX_OVERSAMPLE>>,
+	os: Vec<Oversampler>,
 	is_rendering: bool,
 }
 
@@ -142,7 +142,7 @@ impl Plugin for ClipperPlugin {
 		self.os.clear();
 		self.os.extend(
 			(0..layout.main_input_channels.map_or(0, |n| n.get()))
-				.map(|_| Oversampler::new(buffer_config.max_buffer_size as _, 0)),
+				.map(|_| Oversampler::new(buffer_config.max_buffer_size as _, MAX_OVERSAMPLE, 0)),
 		);
 
 		true
@@ -160,27 +160,26 @@ impl Plugin for ClipperPlugin {
 		_aux: &mut AuxiliaryBuffers,
 		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
-		let times = if self.is_rendering {
-			usize::max(3, self.params.oversample.value() as _)
+		let factor = if self.is_rendering {
+			u8::max(3, self.params.oversample.value() as _)
 		} else {
 			self.params.oversample.value() as _
 		};
 
 		for o in &mut self.os {
-			o.set_oversampling_times(times);
+			o.set_oversampling_factor(factor as _);
 		}
 
 		let latency = self.os.first().map(|o| o.latency()).unwrap_or(0);
 		context.set_latency_samples(latency as _);
 
-		let threshold = db_to_gain(self.params.threshold.value()) as f64;
-		let input_gain = db_to_gain(self.params.input_gain.value()) as f64;
-		let output_gain = db_to_gain(self.params.output_gain.value()) as f64;
+		let threshold = db_to_gain(self.params.threshold.value());
+		let input_gain = db_to_gain(self.params.input_gain.value());
+		let output_gain = db_to_gain(self.params.output_gain.value());
 
 		for (os, channel) in self.os.iter_mut().zip(buffer.as_slice().iter_mut()) {
 			os.process_block(channel, |samples| {
-				// nih_plug::nih_log!("processing: {} samples", samples.len());
-				simd::process_runtime_select(threshold, input_gain, output_gain, samples)
+				simd::process32_runtime_select(threshold, input_gain, output_gain, samples)
 			});
 		}
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2024-2025 Taylan Gökkaya
 
-//! State variable filter (SVF), designed by Andrew Simper of Cytomic.
+//! State variable filter (SVF), designed by Andrew SimperFilter of Cytomic.
 
 use crate::{
 	Component,
@@ -9,9 +9,8 @@ use crate::{
 };
 
 const M_PI: f64 = core::f64::consts::PI;
-pub const BUTTERWORTH_Q: f64 = 0.707;
 
-/**State variable filter (SVF), designed by Andrew Simper of Cytomic.
+/**State variable filter (SVF), designed by Andrew SimperFilter of Cytomic.
 
 The frequency response of this filter is the same as of BZT filters.<br>
 This is a second-order filter. It has a cutoff slope of 12 dB/octave.<br>
@@ -19,8 +18,8 @@ Q = 0.707 means no resonant peaking.<br>
 Translated from https://gist.github.com/hollance/2891d89c57adc71d9560bcf0e1e55c4b
 **/
 #[derive(Debug, Clone)]
-pub struct Simper {
-	x: Coefficients,
+pub struct SimperFilter {
+	x: SimperCoefficients,
 	// State variables
 	ic1eq: f64,
 	ic2eq: f64,
@@ -40,7 +39,7 @@ pub enum FilterType {
 }
 
 #[derive(Debug, Clone)]
-pub struct Coefficients {
+pub struct SimperCoefficients {
 	kind: FilterType,
 	// Mix coefficients
 	m0: f64,
@@ -54,7 +53,7 @@ pub struct Coefficients {
 	k: f64,
 }
 
-impl Coefficients {
+impl SimperCoefficients {
 	// For internal use. It doesn't really make sense otherwise.
 	fn new(kind: FilterType) -> Self {
 		Self {
@@ -208,18 +207,20 @@ macro_rules! constr_no_gain {
 	[$($name:ident),+ $(,)?] => {
 		$(
 			pub fn $name(sample_rate: f64, fq: f64, q: f64) -> Self {
-				Self::new(Coefficients::$name(sample_rate, fq, q))
+				Self::new(SimperCoefficients::$name(sample_rate, fq, q))
 			}
 		)+
 	};
 }
 
-impl Simper {
+impl SimperFilter {
+	pub const BUTTERWORTH_Q: f64 = core::f64::consts::FRAC_1_SQRT_2;
+
 	constr_no_gain![low_pass, high_pass, band_pass, notch, all_pass, peaking];
 
 	pub fn bell(sample_rate: f64, fq: f64, q: f64, db_gain: f64) -> Self {
 		Self {
-			x: Coefficients::bell(sample_rate, fq, q, db_gain),
+			x: SimperCoefficients::bell(sample_rate, fq, q, db_gain),
 			ic1eq: 0.0,
 			ic2eq: 0.0,
 		}
@@ -227,7 +228,7 @@ impl Simper {
 
 	pub fn low_shelf(sample_rate: f64, fq: f64, q: f64, db_gain: f64) -> Self {
 		Self {
-			x: Coefficients::low_shelf(sample_rate, fq, q, db_gain),
+			x: SimperCoefficients::low_shelf(sample_rate, fq, q, db_gain),
 			ic1eq: 0.0,
 			ic2eq: 0.0,
 		}
@@ -235,13 +236,13 @@ impl Simper {
 
 	pub fn high_shelf(sample_rate: f64, fq: f64, q: f64, db_gain: f64) -> Self {
 		Self {
-			x: Coefficients::high_shelf(sample_rate, fq, q, db_gain),
+			x: SimperCoefficients::high_shelf(sample_rate, fq, q, db_gain),
 			ic1eq: 0.0,
 			ic2eq: 0.0,
 		}
 	}
 
-	pub fn new(x: Coefficients) -> Self {
+	pub fn new(x: SimperCoefficients) -> Self {
 		Self {
 			x,
 			ic1eq: 0.0,
@@ -257,39 +258,39 @@ impl Simper {
 	///
 	/// `db_gain` is ignored if [`self.filter_type()`](Self::filter_type) is not `FilterType::Bell`, `FilterType::LowShelf` or `FilterType::HighShelf`.
 	///
-	/// If you know the filter type, or want to replace it, use [`Simper::set_parameters()`] instead, as it will bypass matching on [`FilterType`].
+	/// If you know the filter type, or want to replace it, use [`SimperFilter::set_parameters()`] instead, as it will bypass matching on [`FilterType`].
 	pub fn update_parameters(&mut self, sample_rate: f64, fq: f64, q: f64, db_gain: f64) {
 		use FilterType::*;
 
 		let sr = sample_rate;
 		self.x = match self.filter_type() {
-			LowPass => Coefficients::low_pass(sr, fq, q),
-			HighPass => Coefficients::high_pass(sr, fq, q),
-			BandPass => Coefficients::band_pass(sr, fq, q),
-			Notch => Coefficients::notch(sr, fq, q),
-			AllPass => Coefficients::all_pass(sr, fq, q),
-			Peaking => Coefficients::peaking(sr, fq, q),
+			LowPass => SimperCoefficients::low_pass(sr, fq, q),
+			HighPass => SimperCoefficients::high_pass(sr, fq, q),
+			BandPass => SimperCoefficients::band_pass(sr, fq, q),
+			Notch => SimperCoefficients::notch(sr, fq, q),
+			AllPass => SimperCoefficients::all_pass(sr, fq, q),
+			Peaking => SimperCoefficients::peaking(sr, fq, q),
 
-			Bell => Coefficients::bell(sr, fq, q, db_gain),
-			LowShelf => Coefficients::low_shelf(sr, fq, q, db_gain),
-			HighShelf => Coefficients::high_shelf(sr, fq, q, db_gain),
+			Bell => SimperCoefficients::bell(sr, fq, q, db_gain),
+			LowShelf => SimperCoefficients::low_shelf(sr, fq, q, db_gain),
+			HighShelf => SimperCoefficients::high_shelf(sr, fq, q, db_gain),
 		};
 	}
 
 	/// Replace parameters without clearing state.
-	pub fn set_parameters(&mut self, x: Coefficients) {
+	pub fn set_parameters(&mut self, x: SimperCoefficients) {
 		self.x = x;
 	}
 }
 
-impl ComponentMeta for Simper {
+impl ComponentMeta for SimperFilter {
 	fn reset(&mut self) {
 		self.ic1eq = 0.0;
 		self.ic2eq = 0.0;
 	}
 }
 
-impl Component for Simper {
+impl Component for SimperFilter {
 	/// Process a sample.
 	#[inline]
 	fn process(&mut self, v0: f64) -> f64 {
