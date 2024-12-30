@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright 2024-2025 Taylan Gökkaya
+
 use std::sync::Arc;
 
 use components::Oversampler;

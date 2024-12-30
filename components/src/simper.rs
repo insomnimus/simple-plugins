@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright 2024-2025 Taylan Gökkaya
+
 //! State variable filter (SVF), designed by Andrew Simper of Cytomic.
 
 use crate::{

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright 2024-2025 Taylan Gökkaya
+
 //! Adapted from https://github.com/SolarLiner/valib/blob/main/crates/valib-filters/src/halfband.rs
 
 use crate::{

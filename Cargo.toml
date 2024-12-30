@@ -8,7 +8,7 @@ rust-version = "1.80"
 edition = "2021"
 homepage = "https://github.com/insomnimus/simple-plugins"
 repository = "https://github.com/insomnimus/simple-plugins"
-license = "MIT"
+license = "GPL-3.0-or-later"
 
 [profile.dev]
 opt-level = 1

@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright 2024-2025 Taylan Gökkaya
+
 /** 24dB/oct slope low-pass filter.
 
 Adapted from [synfx-dsp](https://docs.rs/synfx-dsp/latest/synfx_dsp/fn.process_stilson_moog.html).
