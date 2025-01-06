@@ -12,5 +12,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 nih_plug.workspace = true
-components.path = "../../components"
+components.workspace = true
 #valib = {workspace = true, features = ["nih-plug", "oversample"]}
