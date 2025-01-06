@@ -13,8 +13,9 @@ cd simple-plugins
 ./build.ps1 --release
 # Otherwise, build plugins manually, one by one
 # E.g.
-cargo run --bin bundler -- bundle simple-clipper --release
-cargo run --bin bundler -- bundle simple-gain --release
+# (the `cargo bundle` command is defined in .cargo/config.toml as an alias)
+cargo bundle simple-clipper --release
+cargo bundle  simple-gain --release
 # ...and so on
 ```
 

@@ -4,12 +4,22 @@
 mod os1;
 mod os2;
 
+use std::ops::{
+	Deref,
+	DerefMut,
+};
+
 use nih_plug::nih_debug_assert;
 
 pub use self::os1::Oversampler as Oversampler1;
 use self::os2::Lanczos3Oversampler;
+use crate::{
+	ComponentBlock,
+	ComponentMeta,
+};
 
 /// A barebones multi-stage linear-phase oversampler that uses the lanzcos kernel.
+#[derive(Debug, Clone)]
 pub struct Oversampler2 {
 	max_factor: u8,
 	factor: u8,
@@ -75,5 +85,58 @@ impl Oversampler2 {
 	/// Panics if `sample`'s length is longer than the maximum block size specified in [Oversampler2::new].
 	pub fn upsample_only<'a>(&'a mut self, samples: &'a mut [f32]) -> &'a mut [f32] {
 		self.inner.upsample_only(samples, self.factor as _)
+	}
+}
+
+#[derive(Debug, Clone)]
+pub struct Oversampled<C> {
+	pub inner: C,
+	pub os: Oversampler2,
+}
+
+impl<C: ComponentMeta> ComponentMeta for Oversampled<C> {
+	fn latency(&self) -> usize {
+		self.inner.latency()
+	}
+
+	fn reset(&mut self) {
+		self.inner.reset();
+		self.os.reset();
+	}
+}
+
+impl<C: ComponentBlock> ComponentBlock for Oversampled<C> {
+	fn process_block(&mut self, samples: &mut [f32]) {
+		self.os
+			.process_block(samples, |samples| self.inner.process_block(samples));
+	}
+}
+
+impl<C> Oversampled<C> {
+	/// Refer to [Oversampler2::new].
+	pub fn new(inner: C, block_size: usize, max_factor: u8, initial_factor: u8) -> Self {
+		Self {
+			inner,
+			os: Oversampler2::new(block_size, max_factor, initial_factor),
+		}
+	}
+
+	/// Refer to [Oversampler2::set_oversampling_factor].
+	pub fn set_oversampling_factor(&mut self, factor: u8) {
+		self.os.set_oversampling_factor(factor);
+	}
+}
+
+impl<C> Deref for Oversampled<C> {
+	type Target = C;
+
+	fn deref(&self) -> &Self::Target {
+		&self.inner
+	}
+}
+
+impl<C> DerefMut for Oversampled<C> {
+	fn deref_mut(&mut self) -> &mut Self::Target {
+		&mut self.inner
 	}
 }

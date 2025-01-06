@@ -9,3 +9,4 @@ license.workspace = true
 
 [dependencies]
 nih_plug.workspace = true
+r8brain-rs = "0.3.5"

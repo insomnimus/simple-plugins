@@ -6,8 +6,8 @@ use std::sync::Arc;
 use components::{
 	Component,
 	ComponentMeta,
+	Simper,
 	SimperCoefficients,
-	SimperFilter,
 };
 use nih_plug::prelude::*;
 
@@ -33,7 +33,7 @@ fn fq_param(name: &str, default: f32) -> FloatParam {
 fn q_param(name: &str) -> FloatParam {
 	FloatParam::new(
 		name,
-		SimperFilter::BUTTERWORTH_Q as f32,
+		Simper::BUTTERWORTH_Q as f32,
 		FloatRange::Skewed {
 			min: 0.1,
 			max: 4.8,
@@ -99,8 +99,8 @@ impl Default for FilterParams {
 struct FilterPlugin {
 	params: Arc<FilterParams>,
 	sr: f64,
-	hps: Vec<SimperFilter>,
-	lps: Vec<SimperFilter>,
+	hps: Vec<Simper>,
+	lps: Vec<Simper>,
 }
 
 impl FilterPlugin {
@@ -207,8 +207,8 @@ impl Plugin for FilterPlugin {
 		self.hps.clear();
 		self.lps.clear();
 
-		let lpf = SimperFilter::low_pass(self.sr, 20e3, SimperFilter::BUTTERWORTH_Q);
-		let hpf = SimperFilter::high_pass(self.sr, 20.0, SimperFilter::BUTTERWORTH_Q);
+		let lpf = Simper::low_pass(self.sr, 20e3, Simper::BUTTERWORTH_Q);
+		let hpf = Simper::high_pass(self.sr, 20.0, Simper::BUTTERWORTH_Q);
 
 		for _ in 0..layout.main_input_channels.map_or(0, |n| n.get()) {
 			self.hps.push(hpf.clone());

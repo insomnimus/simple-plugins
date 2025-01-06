@@ -10,7 +10,7 @@ use crate::{
 
 const M_PI: f64 = core::f64::consts::PI;
 
-/**State variable filter (SVF), designed by Andrew SimperFilter of Cytomic.
+/**State variable filter (SVF), designed by Andrew Simper of Cytomic.
 
 The frequency response of this filter is the same as of BZT filters.<br>
 This is a second-order filter. It has a cutoff slope of 12 dB/octave.<br>
@@ -18,7 +18,7 @@ Q = 0.707 means no resonant peaking.<br>
 Translated from https://gist.github.com/hollance/2891d89c57adc71d9560bcf0e1e55c4b
 **/
 #[derive(Debug, Clone)]
-pub struct SimperFilter {
+pub struct Simper {
 	x: SimperCoefficients,
 	// State variables
 	ic1eq: f64,
@@ -213,7 +213,7 @@ macro_rules! constr_no_gain {
 	};
 }
 
-impl SimperFilter {
+impl Simper {
 	pub const BUTTERWORTH_Q: f64 = core::f64::consts::FRAC_1_SQRT_2;
 
 	constr_no_gain![low_pass, high_pass, band_pass, notch, all_pass, peaking];
@@ -258,7 +258,7 @@ impl SimperFilter {
 	///
 	/// `db_gain` is ignored if [`self.filter_type()`](Self::filter_type) is not `FilterType::Bell`, `FilterType::LowShelf` or `FilterType::HighShelf`.
 	///
-	/// If you know the filter type, or want to replace it, use [`SimperFilter::set_parameters()`] instead, as it will bypass matching on [`FilterType`].
+	/// If you know the filter type, or want to replace it, use [`Simper::set_parameters()`] instead, as it will bypass matching on [`FilterType`].
 	pub fn update_parameters(&mut self, sample_rate: f64, fq: f64, q: f64, db_gain: f64) {
 		use FilterType::*;
 
@@ -283,14 +283,14 @@ impl SimperFilter {
 	}
 }
 
-impl ComponentMeta for SimperFilter {
+impl ComponentMeta for Simper {
 	fn reset(&mut self) {
 		self.ic1eq = 0.0;
 		self.ic2eq = 0.0;
 	}
 }
 
-impl Component for SimperFilter {
+impl Component for Simper {
 	/// Process a sample.
 	#[inline]
 	fn process(&mut self, v0: f64) -> f64 {
