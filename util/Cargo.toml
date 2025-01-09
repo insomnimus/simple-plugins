@@ -1,5 +1,5 @@
 [package]
-name = "simple-filter"
+name = "util"
 version.workspace = true
 rust-version.workspace = true
 edition.workspace = true
@@ -8,9 +8,8 @@ repository.workspace = true
 license.workspace = true
 
 [lib]
-crate-type = ["cdylib"]
+proc-macro = true
 
 [dependencies]
-# biquad.workspace = true
-components.workspace = true
-nih_plug.workspace = true
+syn = { workspace = true, features = ["full", "visit-mut"] }
+

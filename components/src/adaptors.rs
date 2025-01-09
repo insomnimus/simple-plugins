@@ -2,36 +2,19 @@
 // Copyright 2024-2025 Taylan Gökkaya
 
 use crate::{
-	ComponentBlock,
+	Component,
 	ComponentMeta,
+	SimdFloat,
 };
 
-/// Make a [ComponentBlock] out of a function.
-#[derive(Debug, Clone)]
-pub struct BlockProcess<F> {
-	pub func: F,
-	pub latency: usize,
-}
+/// A wrapped function, to implement [Component].
+#[derive(Debug)]
+pub struct Func<F>(pub F);
 
-impl<F> BlockProcess<F> {
-	pub fn new(func: F) -> Self {
-		Self { func, latency: 0 }
-	}
+impl<F> ComponentMeta for Func<F> {}
 
-	pub fn with_latency(mut self, latency: usize) -> Self {
-		self.latency = latency;
-		self
-	}
-}
-
-impl<F: FnMut(&mut [f32])> ComponentBlock for BlockProcess<F> {
-	fn process_block(&mut self, samples: &mut [f32]) {
-		(self.func)(samples);
-	}
-}
-
-impl<F> ComponentMeta for BlockProcess<F> {
-	fn latency(&self) -> usize {
-		self.latency
+impl<T: SimdFloat, F: FnMut(T) -> T> Component<T> for Func<F> {
+	fn process(&mut self, sample: T) -> T {
+		(self.0)(sample)
 	}
 }

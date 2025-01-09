@@ -5,7 +5,7 @@ mod simd;
 
 use std::sync::Arc;
 
-// use components::Oversampler1 as Oversampler;
+use components::Oversampler;
 use nih_plug::{
 	prelude::*,
 	util::db_to_gain,
@@ -13,7 +13,7 @@ use nih_plug::{
 
 nih_export_clap!(ClipperPlugin);
 
-// const MAX_OVERSAMPLE: u8 = 4;
+const MAX_OVERSAMPLE: u8 = 4;
 
 #[derive(Debug, Params)]
 struct ClipperParams {
@@ -23,8 +23,10 @@ struct ClipperParams {
 	input_gain: FloatParam,
 	#[id = "output-gain"]
 	output_gain: FloatParam,
-	// #[id = "oversample"]
-	// oversample: IntParam,
+	#[id = "oversample"]
+	oversample: BoolParam,
+	#[id = "au-os"]
+	auto_oversample: BoolParam,
 }
 
 impl Default for ClipperParams {
@@ -49,24 +51,24 @@ impl Default for ClipperParams {
 			threshold: p("Threshold", 0.0, -45.0, 15.0),
 			input_gain: p("Input Gain", 0.0, -30.0, 30.0),
 			output_gain: p("Output Gain", 0.0, -30.0, 30.0),
-			/*
-			oversample: IntParam::new(
-				"Oversampling",
-				0,
-				IntRange::Linear {
-					min: 0,
-					max: MAX_OVERSAMPLE as _,
+			oversample: BoolParam::new("Oversample", false).with_value_to_string(Arc::new(
+				|enabled| {
+					if enabled {
+						format!("{MAX_OVERSAMPLE}x")
+					} else {
+						"Off".to_owned()
+					}
 				},
-			)
-			.with_string_to_value(formatters::s2v_i32_power_of_two())
-			.with_value_to_string(Arc::new(|n| {
-				if n == 0 {
-					"Off".to_owned()
-				} else {
-					format!("{}x", usize::pow(2, n as _))
-				}
-			})),
-			*/
+			)),
+			auto_oversample: BoolParam::new("Oversample On Render", true).with_value_to_string(
+				Arc::new(|enabled| {
+					if enabled {
+						"On".to_owned()
+					} else {
+						"Off".to_owned()
+					}
+				}),
+			),
 		}
 	}
 }
@@ -74,8 +76,8 @@ impl Default for ClipperParams {
 #[derive(Default)]
 struct ClipperPlugin {
 	params: Arc<ClipperParams>,
-	// os: Vec<Oversampler>,
-	// is_rendering: bool,
+	oversamplers: Vec<Oversampler>,
+	is_rendering: bool,
 }
 
 impl ClapPlugin for ClipperPlugin {
@@ -133,7 +135,6 @@ impl Plugin for ClipperPlugin {
 		self.params.clone()
 	}
 
-	/*
 	fn initialize(
 		&mut self,
 		layout: &AudioIOLayout,
@@ -141,37 +142,70 @@ impl Plugin for ClipperPlugin {
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
 		self.is_rendering = buffer_config.process_mode == ProcessMode::Offline;
+		let block_size = usize::min(buffer_config.max_buffer_size as usize / 2, 32);
 
-		self.os.clear();
-		self.os.extend(
-			(0..layout.main_input_channels.map_or(0, |n| n.get()))
-				.map(|_| Oversampler::new(buffer_config.max_buffer_size as _, MAX_OVERSAMPLE, 0)),
-		);
+		let channels = layout.main_input_channels.map_or(1, |x| x.get()).min(2);
+
+		if self.oversamplers.len() != channels as usize {
+			self.oversamplers.clear();
+			self.oversamplers.extend((0..channels).map(|_| {
+				Oversampler::new(block_size, buffer_config.sample_rate as _, MAX_OVERSAMPLE)
+			}));
+		} else if self.oversamplers[0].orig_sample_rate() == buffer_config.sample_rate as usize
+			&& self.oversamplers[0].block_size() == block_size
+		{
+			// Saves us some reallocations.
+			for os in &mut self.oversamplers {
+				os.reset();
+			}
+		} else {
+			self.oversamplers.clear();
+			self.oversamplers.extend((0..channels).map(|_| {
+				Oversampler::new(block_size, buffer_config.sample_rate as _, MAX_OVERSAMPLE)
+			}));
+		}
 
 		true
 	}
-	*/
 
-	/*
 	fn reset(&mut self) {
-		for o in &mut self.os {
-			o.reset();
+		for os in &mut self.oversamplers {
+			os.reset();
 		}
 	}
-	*/
 
 	fn process(
 		&mut self,
 		buffer: &mut Buffer,
 		_aux: &mut AuxiliaryBuffers,
-		_context: &mut impl ProcessContext<Self>,
+		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
 		let threshold = db_to_gain(self.params.threshold.value());
 		let input_gain = db_to_gain(self.params.input_gain.value());
 		let output_gain = db_to_gain(self.params.output_gain.value());
 
-		for samples in buffer.as_slice() {
-			simd::process32_runtime_select(threshold, input_gain, output_gain, samples);
+		let oversample = self.params.oversample.value()
+			|| (self.is_rendering && self.params.auto_oversample.value());
+
+		if oversample {
+			for (samples, oversampler) in buffer
+				.as_slice()
+				.iter_mut()
+				.take(2)
+				.zip(&mut self.oversamplers)
+			{
+				context.set_latency_samples(oversampler.latency() as _);
+
+				oversampler.process_block(samples, |samples| {
+					simd::process32_runtime_select(threshold, input_gain, output_gain, samples);
+				})
+			}
+		} else {
+			context.set_latency_samples(0);
+
+			for samples in buffer.as_slice().iter_mut().take(2) {
+				simd::process32_runtime_select(threshold, input_gain, output_gain, samples);
+			}
 		}
 
 		ProcessStatus::Normal

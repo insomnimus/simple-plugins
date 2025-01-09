@@ -12,4 +12,4 @@ crate-type = ["cdylib"]
 
 [dependencies]
 nih_plug.workspace = true
-simdeez.workspace = true
+components.workspace = true

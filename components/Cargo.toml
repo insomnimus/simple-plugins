@@ -9,3 +9,7 @@ license.workspace = true
 
 [dependencies]
 nih_plug.workspace = true
+simdeez.workspace = true
+wide.workspace = true
+util.path = "../util"
+rubato.workspace = true

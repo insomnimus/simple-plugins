@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2024-2025 Taylan Gökkaya
 
-mod simd;
-
 use std::sync::Arc;
 
 use nih_plug::{
@@ -22,7 +20,7 @@ fn gain_param(name: &str) -> FloatParam {
 		},
 	)
 	.with_unit(" dB")
-	.with_step_size(0.1)
+	.with_step_size(0.05)
 }
 
 #[derive(Debug, Params)]
@@ -124,7 +122,7 @@ impl Plugin for GainMonoPlugin {
 	) -> ProcessStatus {
 		if let [samples, ..] = buffer.as_slice() {
 			let gain = db_to_gain(self.params.gain.value());
-			simd::process_mono_runtime_select(gain, samples);
+			components::apply_gain(gain, samples);
 		}
 
 		ProcessStatus::Normal
@@ -169,8 +167,8 @@ impl Plugin for GainPlugin {
 			let left_gain = gain * db_to_gain(self.params.left.value());
 			let right_gain = gain * db_to_gain(self.params.right.value());
 
-			simd::process_mono_runtime_select(left_gain, left_samples);
-			simd::process_mono_runtime_select(right_gain, right_samples);
+			components::apply_gain(left_gain, left_samples);
+			components::apply_gain(right_gain, right_samples);
 		}
 
 		ProcessStatus::Normal

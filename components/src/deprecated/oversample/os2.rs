@@ -1,4 +1,4 @@
-//! Copied from https://github.com/robbert-vdh/nih-plug/blob/master/plugins/soft_vacuum/src/oversampling.rs
+//! Copied from <https://github.com/robbert-vdh/nih-plug/blob/master/plugins/soft_vacuum/src/oversampling.rs>
 
 // Soft Vacuum: Airwindows Hard Vacuum port with oversampling
 // Copyright (C) 2023-2024 Robbert van der Helm

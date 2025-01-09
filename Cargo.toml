@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["bundler", "components", "plugins/*"]
+members = ["bundler", "components", "plugins/*", "util"]
 
 [workspace.package]
-version  = "0.1.7"
+version  = "0.2.0"
 rust-version = "1.80"
 edition = "2021"
 homepage = "https://github.com/insomnimus/simple-plugins"
@@ -21,7 +21,9 @@ lto = true
 
 [workspace.dependencies]
 components.path = "components"
-# biquad = "0.5.0 "
-nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", rev = "16c6c58f4d9f08c9c515c991c218bff235cff6e2" }
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", rev = "16c6c58f4d9f08c9c515c991c218bff235cff6e2", default-features = false }
 nih_plug_xtask = { git = "https://github.com/robbert-vdh/nih-plug", rev = "16c6c58f4d9f08c9c515c991c218bff235cff6e2" }
+rubato = "0.16.1"
 simdeez = "1.0.8"
+syn = "2.0.0"
+wide = "0.7.31"

@@ -29,6 +29,7 @@ fn push_bounds(buf: &mut String, bound: &str, count: usize, prefix: &str, suffix
 		if i > 0 {
 			*buf += ",\n";
 		}
+
 		write!(buf, "C{}: {}", i + 1, bound).unwrap();
 	}
 
@@ -36,7 +37,12 @@ fn push_bounds(buf: &mut String, bound: &str, count: usize, prefix: &str, suffix
 }
 
 fn push_impl_header(buf: &mut String, tuple_len: usize, trait_name: &str) {
-	push_names(buf, tuple_len, "impl<", ">");
+	if trait_name == "ComponentMeta" {
+		push_names(buf, tuple_len, "impl<", ">");
+	} else {
+		push_names(buf, tuple_len, "impl<T: SimdFloat, ", ">");
+	}
+
 	write!(buf, "{trait_name} for ").unwrap();
 	push_names(buf, tuple_len, "(", ")\n");
 	push_bounds(buf, trait_name, tuple_len, "where\n", "");
@@ -66,20 +72,22 @@ fn main() -> io::Result<()> {
 		buf += "}\n}\n\n";
 
 		// Component
-		push_impl_header(&mut buf, n, "Component");
-		buf += "fn process(&mut self, mut sample: f64) -> f64 {\n";
+		push_impl_header(&mut buf, n, "Component<T>");
+		buf += "fn process(&mut self, mut sample: T) -> T {\n";
 		for i in 0..n {
 			writeln!(buf, "sample = self.{i}.process(sample);").unwrap();
 		}
 		buf += "\nsample\n}\n}";
 
 		// ComponentBlock
+		/*
 		push_impl_header(&mut buf, n, "ComponentBlock");
 		buf += "fn process_block(&mut self, samples: &mut [f32]) {\n";
 		for i in 0..n {
 			writeln!(buf, "self.{i}.process_block(samples);").unwrap();
 		}
 		buf += "}\n}\n";
+		*/
 	}
 
 	fs::write(out, buf.as_bytes())?;

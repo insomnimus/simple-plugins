@@ -3,24 +3,24 @@
 
 use std::sync::Arc;
 
-use components::Oversampler2 as Oversampler;
+use components::AdjustableOversampler;
 use nih_plug::prelude::*;
 
 nih_export_clap!(OversamplePlugin);
 
-const OS: u8 = 8;
+const OS: u8 = 7;
 
 #[derive(Debug, Params)]
 struct OsParams {
-	#[id = "times"]
-	times: IntParam,
+	#[id = "factor"]
+	factor: IntParam,
 }
 
 impl Default for OsParams {
 	fn default() -> Self {
 		Self {
-			times: IntParam::new(
-				"Times",
+			factor: IntParam::new(
+				"factor",
 				0,
 				IntRange::Linear {
 					min: 0,
@@ -33,16 +33,16 @@ impl Default for OsParams {
 
 struct OversamplePlugin {
 	params: Arc<OsParams>,
-	l: Oversampler,
-	r: Oversampler,
+	l: AdjustableOversampler,
+	r: AdjustableOversampler,
 }
 
 impl Default for OversamplePlugin {
 	fn default() -> Self {
 		Self {
 			params: Arc::new(OsParams::default()),
-			l: Oversampler::new(1, OS, 0),
-			r: Oversampler::new(1, OS, 0),
+			l: AdjustableOversampler::new(1, 44100, 1, 0),
+			r: AdjustableOversampler::new(1, 44100, 1, 0),
 		}
 	}
 }
@@ -93,8 +93,18 @@ impl Plugin for OversamplePlugin {
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
-		self.l = Oversampler::new(buffer_config.max_buffer_size as _, OS, 0);
-		self.r = Oversampler::new(buffer_config.max_buffer_size as _, OS, 0);
+		self.l = AdjustableOversampler::new(
+			usize::min(buffer_config.max_buffer_size as usize / 2, 32),
+			buffer_config.sample_rate as _,
+			OS,
+			0,
+		);
+		self.r = AdjustableOversampler::new(
+			usize::min(buffer_config.max_buffer_size as usize / 2, 32),
+			buffer_config.sample_rate as _,
+			OS,
+			0,
+		);
 
 		true
 	}
@@ -106,11 +116,11 @@ impl Plugin for OversamplePlugin {
 		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
 		if let [l, r] = buffer.as_slice() {
-			let times = self.params.times.value();
-			self.l.set_oversampling_factor(times as _);
-			self.r.set_oversampling_factor(times as _);
+			let factor = self.params.factor.value();
+			self.l.set_oversampling_factor(factor as _);
+			self.r.set_oversampling_factor(factor as _);
 			context.set_latency_samples(self.l.latency() as _);
-			nih_plug::nih_log!("latency: {}", self.l.latency());
+			// nih_plug::nih_log!("latency: {}", self.l.latency());
 			self.l.process_block(l, |_| ());
 			self.r.process_block(r, |_| ());
 		}

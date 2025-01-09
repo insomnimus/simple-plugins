@@ -1,51 +1,52 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Copyright 2024-2025 Taylan Gökkaya
 
-//! Adapted from https://github.com/SolarLiner/valib/blob/main/crates/valib-filters/src/halfband.rs
+//! Adapted from <https://github.com/SolarLiner/valib/blob/main/crates/valib-filters/src/halfband.rs>
 
 use crate::{
 	Cascade,
 	Component,
 	ComponentMeta,
+	SimdFloat,
 };
 
 /// Specialized 2nd-order AllPass filter.
 #[derive(Debug, Copy, Clone)]
-struct AllPass {
-	a: f64,
-	x: [f64; 3],
-	y: [f64; 3],
+struct AllPass<T> {
+	a: T,
+	x: [T; 3],
+	y: [T; 3],
 }
 
-impl AllPass {
-	fn new(a: f64) -> Self {
+impl<T: SimdFloat> AllPass<T> {
+	fn new(a: T) -> Self {
 		Self {
 			a,
-			x: [0.0; 3],
-			y: [0.0; 3],
+			x: [T::ZERO; 3],
+			y: [T::ZERO; 3],
 		}
 	}
 
-	fn rotate_state(&mut self, x: f64) {
+	fn rotate_state(&mut self, x: T) {
 		let [x0, x1, _] = self.x;
 		self.x = [x, x0, x1];
 		self.y.rotate_right(1);
 	}
 }
 
-impl ComponentMeta for AllPass {
+impl<T: SimdFloat> ComponentMeta for AllPass<T> {
 	fn latency(&self) -> usize {
 		2
 	}
 
 	fn reset(&mut self) {
-		self.x = [0.0; 3];
-		self.y = [0.0; 3];
+		self.x = [T::ZERO; 3];
+		self.y = [T::ZERO; 3];
 	}
 }
 
-impl Component for AllPass {
-	fn process(&mut self, x: f64) -> f64 {
+impl<T: SimdFloat> Component<T> for AllPass<T> {
+	fn process(&mut self, x: T) -> T {
 		self.rotate_state(x);
 		self.y[0] = self.x[2] + ((x - self.y[2]) * self.a);
 		// self.y[0] = self.x[2];
@@ -56,13 +57,13 @@ impl Component for AllPass {
 
 /// Half-band filter of order `2 * ORDER`.
 #[derive(Debug, Clone)]
-pub struct HalfBand<const ORDER: usize> {
-	filter_a: Cascade<AllPass, ORDER>,
-	filter_b: Cascade<AllPass, ORDER>,
-	y0: f64,
+pub struct HalfBand<T, const ORDER: usize> {
+	filter_a: Cascade<AllPass<T>, ORDER>,
+	filter_b: Cascade<AllPass<T>, ORDER>,
+	y0: T,
 }
 
-impl<const ORDER: usize> ComponentMeta for HalfBand<ORDER> {
+impl<T: SimdFloat, const ORDER: usize> ComponentMeta for HalfBand<T, ORDER> {
 	fn latency(&self) -> usize {
 		self.filter_a.latency() + self.filter_b.latency()
 	}
@@ -73,27 +74,27 @@ impl<const ORDER: usize> ComponentMeta for HalfBand<ORDER> {
 	}
 }
 
-impl<const ORDER: usize> Component for HalfBand<ORDER> {
+impl<T: SimdFloat, const ORDER: usize> Component<T> for HalfBand<T, ORDER> {
 	#[inline]
-	fn process(&mut self, x: f64) -> f64 {
-		let y = (self.filter_a.process(x) + self.y0) * 0.5;
+	fn process(&mut self, x: T) -> T {
+		let y = (self.filter_a.process(x) + self.y0) * T::HALF;
 		self.y0 = self.filter_b.process(x);
 
 		y
 	}
 }
 
-impl<const ORDER: usize> HalfBand<ORDER> {
-	fn from_coeffs(k_a: [f64; ORDER], k_b: [f64; ORDER]) -> Self {
+impl<T: SimdFloat, const ORDER: usize> HalfBand<T, ORDER> {
+	fn from_coeffs(k_a: [T; ORDER], k_b: [T; ORDER]) -> Self {
 		Self {
-			filter_a: Cascade(std::array::from_fn(|i| AllPass::new(k_a[i]))),
-			filter_b: Cascade(std::array::from_fn(|i| AllPass::new(k_b[i]))),
-			y0: 0.0,
+			filter_a: Cascade(core::array::from_fn(|i| AllPass::new(k_a[i]))),
+			filter_b: Cascade(core::array::from_fn(|i| AllPass::new(k_b[i]))),
+			y0: T::ZERO,
 		}
 	}
 }
 
-impl HalfBand<6> {
+impl<T: SimdFloat> HalfBand<T, 6> {
 	/// Construct a steep half-band filter of order 12.
 	pub fn steep_order12() -> Self {
 		Self::from_coeffs(
@@ -104,7 +105,8 @@ impl HalfBand<6> {
 				0.769741833862266,
 				0.8922608180038789,
 				0.962094548378084,
-			],
+			]
+			.map(T::splat),
 			[
 				0.13654762463195771,
 				0.42313861743656667,
@@ -112,12 +114,13 @@ impl HalfBand<6> {
 				0.839889624849638,
 				0.9315419599631839,
 				0.9878163707328971,
-			],
+			]
+			.map(T::splat),
 		)
 	}
 }
 
-impl HalfBand<5> {
+impl<T: SimdFloat> HalfBand<T, 5> {
 	/// Construct a steep half-band filter of order 10.
 	pub fn steep_order10() -> Self {
 		Self::from_coeffs(
@@ -127,14 +130,16 @@ impl HalfBand<5> {
 				0.6725475931034693,
 				0.8590884928249939,
 				0.9540209867860787,
-			],
+			]
+			.map(T::splat),
 			[
 				0.18621906251989334,
 				0.529951372847964,
 				0.7810257527489514,
 				0.9141815687605308,
 				0.985475023014907,
-			],
+			]
+			.map(T::splat),
 		)
 	}
 }

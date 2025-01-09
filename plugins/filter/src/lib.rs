@@ -4,12 +4,15 @@
 use std::sync::Arc;
 
 use components::{
-	Component,
+	f64x2,
 	ComponentMeta,
 	Simper,
 	SimperCoefficients,
 };
-use nih_plug::prelude::*;
+use nih_plug::{
+	prelude::*,
+	util::db_to_gain,
+};
 
 nih_export_clap!(FilterPlugin);
 
@@ -33,7 +36,7 @@ fn fq_param(name: &str, default: f32) -> FloatParam {
 fn q_param(name: &str) -> FloatParam {
 	FloatParam::new(
 		name,
-		Simper::BUTTERWORTH_Q as f32,
+		Simper::BUTTERWORTH_Q,
 		FloatRange::Skewed {
 			min: 0.1,
 			max: 4.8,
@@ -65,11 +68,23 @@ struct FilterParams {
 	hp: FilterParam,
 	#[nested(id_prefix = "lp", group = "Low-Pass Filter")]
 	lp: FilterParam,
+	#[id = "g_gain"]
+	global_gain: FloatParam,
 }
 
 impl Default for FilterParams {
 	fn default() -> Self {
 		Self {
+			global_gain: FloatParam::new(
+				"Global gain",
+				0.0,
+				FloatRange::Linear {
+					min: -50.0,
+					max: 50.0,
+				},
+			)
+			.with_unit("dB")
+			.with_step_size(0.1),
 			hp: FilterParam {
 				q: q_param("HPF Q"),
 				fq: fq_param("HPF Frequency", HPF_OFF_FQ).with_value_to_string(Arc::new(|fq| {
@@ -95,49 +110,70 @@ impl Default for FilterParams {
 	}
 }
 
-#[derive(Default)]
 struct FilterPlugin {
 	params: Arc<FilterParams>,
+
 	sr: f64,
-	hps: Vec<Simper>,
-	lps: Vec<Simper>,
+	sr_f64x2: f64x2,
+
+	hp_mono: Simper<f64>,
+	lp_mono: Simper<f64>,
+	hp_stereo: Simper<f64x2>,
+	lp_stereo: Simper<f64x2>,
+}
+
+impl Default for FilterPlugin {
+	fn default() -> Self {
+		Self {
+			params: Arc::new(FilterParams::default()),
+			sr: 44100.0,
+			sr_f64x2: f64x2::splat(44100.0),
+
+			hp_mono: Simper::high_pass(44100.0, 20.0, Simper::BUTTERWORTH_Q),
+			lp_mono: Simper::low_pass(44100.0, 20e3, Simper::BUTTERWORTH_Q),
+			hp_stereo: Simper::high_pass(
+				f64x2::splat(44100.0),
+				f64x2::splat(20.0),
+				Simper::BUTTERWORTH_Q,
+			),
+			lp_stereo: Simper::low_pass(
+				f64x2::splat(44100.0),
+				f64x2::splat(20e3),
+				Simper::BUTTERWORTH_Q,
+			),
+		}
+	}
 }
 
 impl FilterPlugin {
-	fn update_hp(&mut self) {
-		let hc = SimperCoefficients::high_pass(
-			self.sr,
-			self.params.hp.fq.value() as f64,
-			self.params.hp.q.value() as f64,
-		);
-
-		for f in &mut self.hps {
-			f.set_parameters(hc.clone())
-		}
-	}
-
-	fn update_lp(&mut self) {
-		let lc = SimperCoefficients::low_pass(
-			self.sr,
-			self.params.lp.fq.value() as f64,
-			self.params.lp.q.value() as f64,
-		);
-
-		for f in &mut self.lps {
-			f.set_parameters(lc.clone())
-		}
+	fn reset_lp(&mut self) {
+		self.lp_mono.reset();
+		self.lp_stereo.reset();
 	}
 
 	fn reset_hp(&mut self) {
-		for f in &mut self.hps {
-			f.reset();
-		}
+		self.hp_mono.reset();
+		self.hp_stereo.reset();
 	}
 
-	fn reset_lp(&mut self) {
-		for f in &mut self.lps {
-			f.reset();
-		}
+	fn update_hp(&mut self, fq: f32, q: f32) {
+		self.hp_mono
+			.set_parameters(SimperCoefficients::high_pass(self.sr, fq as _, q as _));
+		self.hp_stereo.set_parameters(SimperCoefficients::high_pass(
+			self.sr_f64x2,
+			f64x2::splat(fq as _),
+			f64x2::splat(q as _),
+		));
+	}
+
+	fn update_lp(&mut self, fq: f32, q: f32) {
+		self.lp_mono
+			.set_parameters(SimperCoefficients::low_pass(self.sr, fq as _, q as _));
+		self.lp_stereo.set_parameters(SimperCoefficients::low_pass(
+			self.sr_f64x2,
+			f64x2::splat(fq as _),
+			f64x2::splat(q as _),
+		));
 	}
 }
 
@@ -199,21 +235,16 @@ impl Plugin for FilterPlugin {
 
 	fn initialize(
 		&mut self,
-		layout: &AudioIOLayout,
+		_layout: &AudioIOLayout,
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
+		// self.is_mono = layout.main_input_channels == Some(new_nonzero_u32(1));
 		self.sr = buffer_config.sample_rate as _;
-		self.hps.clear();
-		self.lps.clear();
+		self.sr_f64x2 = f64x2::splat(buffer_config.sample_rate as _);
 
-		let lpf = Simper::low_pass(self.sr, 20e3, Simper::BUTTERWORTH_Q);
-		let hpf = Simper::high_pass(self.sr, 20.0, Simper::BUTTERWORTH_Q);
-
-		for _ in 0..layout.main_input_channels.map_or(0, |n| n.get()) {
-			self.hps.push(hpf.clone());
-			self.lps.push(lpf.clone());
-		}
+		self.update_lp(20e3, Simper::<f64>::BUTTERWORTH_Q as _);
+		self.update_hp(20.0, Simper::<f64>::BUTTERWORTH_Q as _);
 
 		true
 	}
@@ -222,55 +253,65 @@ impl Plugin for FilterPlugin {
 		&mut self,
 		buffer: &mut Buffer,
 		_aux: &mut AuxiliaryBuffers,
-		_context: &mut impl ProcessContext<Self>,
+		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
 		let hp = self.params.hp.fq.value();
 		let lp = self.params.lp.fq.value();
+		let hp_q = self.params.hp.q.value();
+		let lp_q = self.params.lp.q.value();
+		let gain = db_to_gain(self.params.global_gain.value());
 
-		if hp <= HPF_OFF_FQ && lp >= LPF_OFF_FQ {
-			// Filters are off
-			return ProcessStatus::Normal;
-		}
-
-		if lp >= LPF_OFF_FQ {
-			// LP is off
-			self.update_hp();
-			self.reset_lp();
-
-			for (channel, hpf) in buffer.as_slice().iter_mut().zip(&mut self.hps) {
-				for sample in channel.iter_mut() {
-					*sample = hpf.process(*sample as _) as _;
-				}
+		match (hp <= HPF_OFF_FQ, lp >= LPF_OFF_FQ) {
+			(true, true) => {
+				// Filters are off
+				context.set_latency_samples(0);
 			}
 
-			return ProcessStatus::Normal;
-		}
+			(false, true) => {
+				// LP is off
+				context.set_latency_samples(self.hp_mono.latency() as _);
+				self.update_hp(hp, hp_q);
+				self.reset_lp();
 
-		if hp <= HPF_OFF_FQ {
-			// HP is off
-			self.update_lp();
-			self.reset_hp();
-
-			for (channel, lpf) in buffer.as_slice().iter_mut().zip(&mut self.lps) {
-				for sample in channel.iter_mut() {
-					*sample = lpf.process(*sample as _) as _;
-				}
+				components::apply_mono_stereo(
+					&mut self.hp_mono,
+					&mut self.hp_stereo,
+					buffer.as_slice(),
+				);
 			}
 
-			return ProcessStatus::Normal;
+			(true, false) => {
+				// HP is off
+				context.set_latency_samples(self.lp_mono.latency() as _);
+				self.update_lp(lp, lp_q);
+				self.reset_hp();
+
+				components::apply_mono_stereo(
+					&mut self.lp_mono,
+					&mut self.lp_stereo,
+					buffer.as_slice(),
+				);
+			}
+
+			(false, false) => {
+				// Both filters are active.
+				context.set_latency_samples(
+					self.hp_mono.latency() as u32 + self.lp_mono.latency() as u32,
+				);
+				self.update_hp(hp, hp_q);
+				self.update_lp(lp, lp_q);
+
+				components::apply_mono_stereo(
+					(&mut self.hp_mono, &mut self.lp_mono),
+					(&mut self.hp_stereo, &mut self.lp_stereo),
+					buffer.as_slice(),
+				);
+			}
 		}
 
-		// Both filters are active.
-		self.update_hp();
-		self.update_lp();
-
-		for (channel, (hpf, lpf)) in buffer
-			.as_slice()
-			.iter_mut()
-			.zip(self.hps.iter_mut().zip(&mut self.lps))
-		{
-			for sample in channel.iter_mut() {
-				*sample = lpf.process(hpf.process(*sample as _)) as _;
+		if gain != 0.0 {
+			for samples in buffer.as_slice().iter_mut().take(2) {
+				components::apply_gain(gain, samples);
 			}
 		}
 

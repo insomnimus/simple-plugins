@@ -29,6 +29,8 @@ Parameters:
 - Threshold: Clipping threshold
 - Input Gain: Apply some gain before processing
 - Output Gain: Apply some gain after processing
+- Oversample: Enable oversampling, which will improve quality but introduce significant latency
+- Oversample On Render: Turn on oversampling while rendering, even if it's not enabled
 
 ### Simple Filter
 High and low-pass filters.

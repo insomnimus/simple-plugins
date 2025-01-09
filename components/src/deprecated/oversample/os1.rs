@@ -16,8 +16,8 @@ use crate::{
 struct Inner {
 	max_factor: u8,
 	buffer: Box<[f64]>,
-	down_filters: Box<[HalfBand<6>]>,
-	up_filters: Box<[HalfBand<6>]>,
+	down_filters: Box<[HalfBand<f64, 6>]>,
+	up_filters: Box<[HalfBand<f64, 6>]>,
 }
 
 impl Inner {
@@ -100,10 +100,7 @@ impl Inner {
 	}
 }
 
-/// An oversampler with a built-in anti-aliasing filter.
-///
-/// The `N` constant refers to maximum number of oversampling stages; this means that the actual oversampling ratio is `pow(2, N)`.
-/// Also note that `N` can't be greater than `8` as there's absolutely no reason to use ratios above it (and the memory use scales linearly with the oversampling ratio, so it quickly becomes impossible).
+/// A minimum phase oversampler using half-band filters.
 #[derive(Debug, Clone)]
 pub struct Oversampler {
 	max_factor: u8,
