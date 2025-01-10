@@ -23,7 +23,7 @@ After building, you can copy `.clap` files in `target/bundled/` to your CLAP plu
 
 ## Included Plugins
 ### Simple Channel Strip
-A work-in-progress channel strip. Currently has a 5-band eq + high and low-pass filters, and input / output gain knobs.
+A work-in-progress channel strip. Currently has tube drive, a 5-band eq + high and low-pass filters, and input / output gain knobs.
 
 ### Simple Clipper
 This is a basic hard-clipper.

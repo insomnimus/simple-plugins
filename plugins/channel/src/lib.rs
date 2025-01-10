@@ -8,6 +8,9 @@ use std::sync::Arc;
 use components::{
 	f64x2,
 	ComponentMeta,
+	DoubleMono,
+	Toggle,
+	Tube,
 };
 use nih_plug::{
 	prelude::*,
@@ -23,6 +26,8 @@ nih_export_clap!(ChannelPlugin);
 
 #[derive(Params)]
 struct ChannelParams {
+	#[id = "drive"]
+	drive: FloatParam,
 	#[nested(group = "Eq")]
 	eq: EqParams,
 	#[id = "in_gn"]
@@ -34,6 +39,10 @@ struct ChannelParams {
 impl Default for ChannelParams {
 	fn default() -> Self {
 		Self {
+			drive: FloatParam::new("Drive", 0.0, FloatRange::Linear { min: 0.0, max: 1.0 })
+				.with_step_size(0.01)
+				.with_value_to_string(formatters::v2s_f32_percentage(0))
+				.with_string_to_value(formatters::s2v_f32_percentage()),
 			eq: EqParams::default(),
 			input_gain: FloatParam::new(
 				"Input Gain",
@@ -49,8 +58,8 @@ impl Default for ChannelParams {
 				"Output Gain",
 				0.0,
 				FloatRange::Linear {
-					min: -50.0,
-					max: 50.0,
+					min: -30.0,
+					max: 30.0,
 				},
 			)
 			.with_unit("dB")
@@ -68,6 +77,8 @@ struct ChannelPlugin {
 }
 
 struct State {
+	drive_mono: Toggle<Tube<f64>>,
+	drive_stereo: Toggle<DoubleMono<Tube<f64>>>,
 	eq_mono: Eq<f64>,
 	eq_stereo: Eq<f64x2>,
 }
@@ -81,6 +92,8 @@ impl Default for ChannelPlugin {
 			sr_f64x2: f64x2::splat(44100.0),
 
 			state: Box::new(State {
+				drive_mono: Toggle::new(Tube::new(44100.0), false, true),
+				drive_stereo: Toggle::new(DoubleMono::double(Tube::new(44100.0)), false, true),
 				eq_mono: Eq::new(44100.0, &params.eq),
 				eq_stereo: Eq::new(f64x2::splat(44100.0), &params.eq),
 			}),
@@ -155,7 +168,13 @@ impl Plugin for ChannelPlugin {
 		self.sr = buffer_config.sample_rate as _;
 		self.sr_f64x2 = f64x2::splat(buffer_config.sample_rate as _);
 
+		let drive = self.params.drive.value();
+		let mut tube = Tube::new(self.sr);
+		tube.set_amount(drive as _);
+
 		*self.state = State {
+			drive_mono: Toggle::new(tube.clone(), drive > 0.0, true),
+			drive_stereo: Toggle::new(DoubleMono::double(tube), drive > 0.0, true),
 			eq_mono: Eq::new(self.sr, &self.params.eq),
 			eq_stereo: Eq::new(self.sr_f64x2, &self.params.eq),
 		};
@@ -169,10 +188,19 @@ impl Plugin for ChannelPlugin {
 		_aux: &mut AuxiliaryBuffers,
 		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
+		let drive = self.params.drive.value() as f64;
+
 		if buffer.channels() == 1 {
+			self.state.drive_mono.set_amount(drive);
+			self.state.drive_mono.toggle(drive > 0.0);
+
 			self.state.eq_mono.update_parameters(&self.params.eq);
 			context.set_latency_samples(self.state.eq_mono.latency() as _);
 		} else {
+			self.state.drive_stereo.left.set_amount(drive);
+			self.state.drive_stereo.right.set_amount(drive);
+			self.state.drive_stereo.toggle(drive > 0.0);
+
 			self.state.eq_stereo.update_parameters(&self.params.eq);
 			context.set_latency_samples(self.state.eq_mono.latency() as _);
 		}
@@ -187,8 +215,8 @@ impl Plugin for ChannelPlugin {
 		}
 
 		components::apply_mono_stereo(
-			&mut self.state.eq_mono,
-			&mut self.state.eq_stereo,
+			(&mut self.state.drive_mono, &mut self.state.eq_mono),
+			(&mut self.state.drive_stereo, &mut self.state.eq_stereo),
 			buffer.as_slice(),
 		);
 
