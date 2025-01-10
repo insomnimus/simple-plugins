@@ -8,6 +8,7 @@ mod half_band;
 mod oversample;
 mod simd;
 mod simper;
+mod tube;
 
 pub use util::replace_float_literals;
 /// SIMD accelerated 2 [`f64`]s, useful for stereo processing.
@@ -23,6 +24,7 @@ pub use self::{
 	oversample::*,
 	simd::*,
 	simper::*,
+	tube::*,
 };
 
 include!(concat!(env!("OUT_DIR"), "/component_impls.rs"));

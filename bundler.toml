@@ -1,3 +1,9 @@
+[oversample]
+name = "Oversample"
+
+[simple-channel]
+name = "Simple Channel"
+
 [simple-clipper]
 name = "Simple Clipper"
 
@@ -7,5 +13,5 @@ name = "Simple Gain"
 [simple-filter]
 name = "Simple Filter"
 
-[oversample]
-name = "Oversample"
+[simple-tube]
+name = "Simple Tube"

@@ -13,7 +13,7 @@ use nih_plug::{
 
 nih_export_clap!(ClipperPlugin);
 
-const MAX_OVERSAMPLE: u8 = 4;
+const MAX_OVERSAMPLE: u8 = 3;
 
 #[derive(Debug, Params)]
 struct ClipperParams {
@@ -54,7 +54,7 @@ impl Default for ClipperParams {
 			oversample: BoolParam::new("Oversample", false).with_value_to_string(Arc::new(
 				|enabled| {
 					if enabled {
-						format!("{MAX_OVERSAMPLE}x")
+						format!("{}x", u8::pow(2, MAX_OVERSAMPLE as _))
 					} else {
 						"Off".to_owned()
 					}
@@ -77,6 +77,7 @@ impl Default for ClipperParams {
 struct ClipperPlugin {
 	params: Arc<ClipperParams>,
 	oversamplers: Vec<Oversampler>,
+	oversampler_was_active: bool,
 	is_rendering: bool,
 }
 
@@ -187,13 +188,18 @@ impl Plugin for ClipperPlugin {
 		let oversample = self.params.oversample.value()
 			|| (self.is_rendering && self.params.auto_oversample.value());
 
+		if oversample && !self.oversampler_was_active {
+			// Clear out the buffers so we don't work with stale samples.
+			for os in &mut self.oversamplers {
+				os.reset();
+			}
+			self.oversampler_was_active = true;
+		} else {
+			self.oversampler_was_active = false;
+		}
+
 		if oversample {
-			for (samples, oversampler) in buffer
-				.as_slice()
-				.iter_mut()
-				.take(2)
-				.zip(&mut self.oversamplers)
-			{
+			for (samples, oversampler) in buffer.as_slice().iter_mut().zip(&mut self.oversamplers) {
 				context.set_latency_samples(oversampler.latency() as _);
 
 				oversampler.process_block(samples, |samples| {

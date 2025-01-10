@@ -13,6 +13,18 @@ use core::{
 
 use wide::*;
 
+/// Non-vector float abstraction: implemented for [`prim@f32`] and [`prim@f64`].
+pub trait ScalarFloat:
+	SimdFloat + PartialEq<Self> + PartialOrd<Self> + Rem<Self> + RemAssign<Self> + Into<f64> + From<f32>
+{
+	fn to_f64(self) -> f64 {
+		self.into()
+	}
+}
+
+impl ScalarFloat for f32 {}
+impl ScalarFloat for f64 {}
+
 /// Float abstraction: implemented for [`prim@f32`], [`prim@f64`], [`f32x4`] and [`f64x2`].
 pub trait SimdFloat:
 	Copy
@@ -77,6 +89,7 @@ pub trait SimdFloat:
 	// methods {
 	fn value(self) -> Self::Value;
 	fn new(val: Self::Value) -> Self;
+	fn first_as_f64(self) -> f64;
 
 	fn from_f32(val: f32) -> Self {
 		Self::splat(val as f64)
@@ -244,6 +257,11 @@ impl SimdFloat for f64x2 {
 
 	fn new(value: Self::Value) -> Self {
 		Self::new(value)
+	}
+
+	#[inline]
+	fn first_as_f64(self) -> f64 {
+		self.to_array()[0]
 	}
 
 	#[inline]
@@ -508,6 +526,11 @@ impl SimdFloat for f32x4 {
 	}
 
 	#[inline]
+	fn first_as_f64(self) -> f64 {
+		self.to_array()[0] as f64
+	}
+
+	#[inline]
 	fn abs(self) -> Self {
 		self.abs()
 	}
@@ -764,6 +787,10 @@ impl SimdFloat for f64 {
 
 	fn new(val: Self::Value) -> Self {
 		val
+	}
+
+	fn first_as_f64(self) -> f64 {
+		self
 	}
 
 	#[inline]
@@ -1026,6 +1053,10 @@ impl SimdFloat for f32 {
 
 	fn new(val: Self::Value) -> Self {
 		val
+	}
+
+	fn first_as_f64(self) -> f64 {
+		self as f64
 	}
 
 	#[inline]

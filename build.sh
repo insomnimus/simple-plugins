@@ -4,6 +4,6 @@ set -ue
 
 cd -- "$(dirname -- "$0")"
 
-for plugin in simple-{clipper,filter,gain}; do
+for plugin in simple-{channel,clipper,filter,gain,tube}; do
 	cargo run --bin bundler -- bundle "$plugin" "$@"
 done

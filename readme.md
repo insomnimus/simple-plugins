@@ -22,6 +22,9 @@ cargo bundle  simple-gain --release
 After building, you can copy `.clap` files in `target/bundled/` to your CLAP plugin directory.
 
 ## Included Plugins
+### Simple Channel Strip
+A work-in-progress channel strip. Currently has a 5-band eq + high and low-pass filters, and input / output gain knobs.
+
 ### Simple Clipper
 This is a basic hard-clipper.
 
@@ -52,3 +55,11 @@ Stereo parameters:
 - Gain: Gain to apply on both channels
 - Left: Gain to apply on the left channel
 - Right: Gain to apply on the right channel
+
+### Simple Tube
+Subtle tube saturation. Ported into a CLAP plugin from [AirWindows'](https://github.com/airwindows/airwindows) Tube plugin, because I don't like working with VST2 plugins.
+
+Parameters:
+- Amount: 0 to 100, amount of saturation (or drive)
+- Input Gain: Gain before the signal hits the tube saturator
+- Output Gain: Gain after the saturator

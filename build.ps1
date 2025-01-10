@@ -1,7 +1,9 @@
 $plugins = @(
+	"simple-channel"
 	"simple-clipper"
 	"simple-filter"
 	"simple-gain"
+	"simple-tube"
 )
 
 foreach($plugin in $plugins) {
