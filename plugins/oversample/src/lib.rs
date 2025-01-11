@@ -3,17 +3,28 @@
 
 use std::sync::Arc;
 
-use components::AdjustableOversampler;
+use components::{
+	AdOversampler1,
+	AdOversampler2,
+};
 use nih_plug::prelude::*;
 
 nih_export_clap!(OversamplePlugin);
 
 const OS: u8 = 7;
 
+#[derive(Copy, Clone, Eq, PartialEq, Enum)]
+enum OsModel {
+	Os1,
+	Os2,
+}
+
 #[derive(Debug, Params)]
 struct OsParams {
 	#[id = "factor"]
 	factor: IntParam,
+	#[id = "model"]
+	model: EnumParam<OsModel>,
 }
 
 impl Default for OsParams {
@@ -27,22 +38,25 @@ impl Default for OsParams {
 					max: OS as _,
 				},
 			),
+			model: EnumParam::new("Model", OsModel::Os1),
 		}
 	}
 }
 
 struct OversamplePlugin {
 	params: Arc<OsParams>,
-	l: AdjustableOversampler,
-	r: AdjustableOversampler,
+	os1: Vec<AdOversampler1>,
+	os2: Vec<AdOversampler2>,
+	model: OsModel,
 }
 
 impl Default for OversamplePlugin {
 	fn default() -> Self {
 		Self {
 			params: Arc::new(OsParams::default()),
-			l: AdjustableOversampler::new(1, 44100, 1, 0),
-			r: AdjustableOversampler::new(1, 44100, 1, 0),
+			os1: Vec::new(),
+			os2: Vec::new(),
+			model: OsModel::Os1,
 		}
 	}
 }
@@ -83,28 +97,38 @@ impl Plugin for OversamplePlugin {
 	}
 
 	fn reset(&mut self) {
-		self.l.reset();
-		self.r.reset();
+		for x in &mut self.os1 {
+			x.reset();
+		}
+		for x in &mut self.os2 {
+			x.reset();
+		}
 	}
 
 	fn initialize(
 		&mut self,
-		_layout: &AudioIOLayout,
+		layout: &AudioIOLayout,
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
-		self.l = AdjustableOversampler::new(
-			usize::min(buffer_config.max_buffer_size as usize / 2, 32),
-			buffer_config.sample_rate as _,
-			OS,
-			0,
-		);
-		self.r = AdjustableOversampler::new(
-			usize::min(buffer_config.max_buffer_size as usize / 2, 32),
-			buffer_config.sample_rate as _,
-			OS,
-			0,
-		);
+		let channels = layout.main_input_channels.map_or(1, |x| x.get()).min(2);
+		self.os1.clear();
+		self.os2.clear();
+
+		for _ in 0..channels {
+			self.os1.push(AdOversampler1::new(
+				usize::min(buffer_config.max_buffer_size as usize / 2, 32),
+				buffer_config.sample_rate as _,
+				OS,
+				0,
+			));
+
+			self.os2.push(AdOversampler2::new(
+				buffer_config.max_buffer_size as _,
+				OS,
+				0,
+			));
+		}
 
 		true
 	}
@@ -115,16 +139,39 @@ impl Plugin for OversamplePlugin {
 		_aux: &mut AuxiliaryBuffers,
 		context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
-		if let [l, r] = buffer.as_slice() {
-			let factor = self.params.factor.value();
-			self.l.set_oversampling_factor(factor as _);
-			self.r.set_oversampling_factor(factor as _);
-			context.set_latency_samples(self.l.latency() as _);
-			// nih_plug::nih_log!("latency: {}", self.l.latency());
-			self.l.process_block(l, |_| ());
-			self.r.process_block(r, |_| ());
+		let factor = self.params.factor.value() as u8;
+
+		let model = self.params.model.value();
+		if model != self.model {
+			match model {
+				OsModel::Os2 => self.os2.iter_mut().for_each(|x| x.reset()),
+				OsModel::Os1 => self.os1.iter_mut().for_each(|x| x.reset()),
+			}
+
+			self.model = model;
 		}
 
+		let mut latency = 0;
+
+		match self.model {
+			OsModel::Os1 => {
+				for (os, channel) in self.os1.iter_mut().zip(buffer.as_slice()) {
+					os.set_oversampling_factor(factor);
+					latency = os.latency();
+					os.process_block(channel, |_| ());
+				}
+			}
+
+			OsModel::Os2 => {
+				for (os, channel) in self.os2.iter_mut().zip(buffer.as_slice()) {
+					os.set_oversampling_factor(factor);
+					latency = os.latency();
+					os.process_block(channel, |_| ());
+				}
+			}
+		}
+
+		context.set_latency_samples(latency as _);
 		ProcessStatus::Normal
 	}
 }

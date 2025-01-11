@@ -5,7 +5,7 @@ mod simd;
 
 use std::sync::Arc;
 
-use components::Oversampler;
+use components::Oversampler1 as Oversampler;
 use nih_plug::{
 	prelude::*,
 	util::db_to_gain,
