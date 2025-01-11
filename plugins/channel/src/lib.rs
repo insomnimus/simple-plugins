@@ -8,6 +8,7 @@ use std::sync::Arc;
 use components::{
 	f64x2,
 	ComponentMeta,
+	DcBlocker,
 	DoubleMono,
 	Toggle,
 	Tube,
@@ -77,6 +78,8 @@ struct ChannelPlugin {
 }
 
 struct State {
+	dc_mono: DcBlocker<f64>,
+	dc_stereo: DcBlocker<f64x2>,
 	drive_mono: Toggle<Tube<f64>>,
 	drive_stereo: Toggle<DoubleMono<Tube<f64>>>,
 	eq_mono: Eq<f64>,
@@ -92,6 +95,8 @@ impl Default for ChannelPlugin {
 			sr_f64x2: f64x2::splat(44100.0),
 
 			state: Box::new(State {
+				dc_mono: DcBlocker::new(44100.0),
+				dc_stereo: DcBlocker::new(f64x2::splat(44100.0)),
 				drive_mono: Toggle::new(Tube::new(44100.0), false, true),
 				drive_stereo: Toggle::new(DoubleMono::double(Tube::new(44100.0)), false, true),
 				eq_mono: Eq::new(44100.0, &params.eq),
@@ -155,6 +160,12 @@ impl Plugin for ChannelPlugin {
 	}
 
 	fn reset(&mut self) {
+		self.state.dc_mono.reset();
+		self.state.dc_stereo.reset();
+
+		self.state.drive_mono.reset();
+		self.state.drive_stereo.reset();
+
 		self.state.eq_mono.reset();
 		self.state.eq_stereo.reset();
 	}
@@ -173,6 +184,8 @@ impl Plugin for ChannelPlugin {
 		tube.set_amount(drive as _);
 
 		*self.state = State {
+			dc_mono: DcBlocker::new(self.sr),
+			dc_stereo: DcBlocker::new(self.sr_f64x2),
 			drive_mono: Toggle::new(tube.clone(), drive > 0.0, true),
 			drive_stereo: Toggle::new(DoubleMono::double(tube), drive > 0.0, true),
 			eq_mono: Eq::new(self.sr, &self.params.eq),
@@ -215,8 +228,16 @@ impl Plugin for ChannelPlugin {
 		}
 
 		components::apply_mono_stereo(
-			(&mut self.state.drive_mono, &mut self.state.eq_mono),
-			(&mut self.state.drive_stereo, &mut self.state.eq_stereo),
+			(
+				&mut self.state.drive_mono,
+				&mut self.state.eq_mono,
+				&mut self.state.dc_mono,
+			),
+			(
+				&mut self.state.drive_stereo,
+				&mut self.state.eq_stereo,
+				&mut self.state.dc_stereo,
+			),
 			buffer.as_slice(),
 		);
 

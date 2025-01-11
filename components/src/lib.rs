@@ -2,12 +2,14 @@
 // Copyright 2024-2025 Taylan Gökkaya
 
 mod adaptors;
+mod cascade;
 mod dc_blocker;
 mod gain;
 mod half_band;
 mod oversample;
 mod simd;
 mod simper;
+mod sweeten;
 mod tube;
 
 pub use util::replace_float_literals;
@@ -18,12 +20,14 @@ pub use wide::f64x2;
 
 pub use self::{
 	adaptors::*,
+	cascade::*,
 	dc_blocker::*,
 	gain::*,
 	half_band::HalfBand,
 	oversample::*,
 	simd::*,
 	simper::*,
+	sweeten::*,
 	tube::*,
 };
 
@@ -41,33 +45,6 @@ pub trait ComponentMeta {
 /// Trait for per-sample audio processing components.
 pub trait Component<T>: ComponentMeta {
 	fn process(&mut self, sample: T) -> T;
-}
-
-/// Cascade a [Component] several times.
-#[derive(Debug, Clone)]
-pub struct Cascade<C, const N: usize>(pub [C; N]);
-
-impl<C: ComponentMeta, const N: usize> ComponentMeta for Cascade<C, N> {
-	fn reset(&mut self) {
-		for c in &mut self.0 {
-			c.reset();
-		}
-	}
-
-	fn latency(&self) -> usize {
-		self.0.iter().map(C::latency).sum()
-	}
-}
-
-impl<T, C: Component<T>, const N: usize> Component<T> for Cascade<C, N> {
-	#[inline]
-	fn process(&mut self, mut sample: T) -> T {
-		for f in &mut self.0 {
-			sample = f.process(sample);
-		}
-
-		sample
-	}
 }
 
 impl<C: ComponentMeta> ComponentMeta for &mut C {

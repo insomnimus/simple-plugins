@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use components::{
+	Cascade,
 	Component,
 	ComponentMeta,
 	Tube,
@@ -56,7 +57,7 @@ impl Default for TubeParams {
 #[derive(Default)]
 struct TubePlugin {
 	params: Arc<TubeParams>,
-	tubes: Vec<Tube<f64>>,
+	tubes: Vec<Cascade<Tube<f64>, 4>>,
 }
 
 impl ClapPlugin for TubePlugin {
@@ -128,8 +129,9 @@ impl Plugin for TubePlugin {
 	) -> bool {
 		let channels = layout.main_input_channels.map_or(1, |x| x.get()).min(2);
 		self.tubes.clear();
-		self.tubes
-			.extend((0..channels).map(|_| Tube::new(buffer_config.sample_rate as _)));
+		self.tubes.extend(
+			(0..channels).map(|_| Cascade::from_fn(|_| Tube::new(buffer_config.sample_rate as _))),
+		);
 
 		true
 	}
@@ -145,7 +147,7 @@ impl Plugin for TubePlugin {
 		let amount = self.params.amount.value() as f64;
 
 		for (tube, samples) in self.tubes.iter_mut().zip(buffer.as_slice()) {
-			tube.set_amount(amount);
+			tube.apply(|tube| tube.set_amount(amount));
 			context.set_latency_samples(tube.latency() as _);
 
 			if input_gain != 1.0 {

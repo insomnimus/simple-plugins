@@ -8,6 +8,12 @@ use simdeez::{
 	sse41::*,
 };
 
+use crate::{
+	Component,
+	ComponentMeta,
+	SimdFloat,
+};
+
 simd_runtime_generate! {
 	fn process(gain: f32, samples: &mut [f32]) {
 		unsafe {
@@ -38,4 +44,17 @@ simd_runtime_generate! {
 /// `gain` is a voltage gain - not dB.
 pub fn apply_gain(gain: f32, samples: &mut [f32]) {
 	process_runtime_select(gain, samples);
+}
+
+/// A clean gain [`Component`].
+#[derive(Debug, Copy, Clone)]
+pub struct Gain<T>(pub T);
+
+impl<T> ComponentMeta for Gain<T> {}
+
+impl<T: SimdFloat> Component<T> for Gain<T> {
+	#[inline]
+	fn process(&mut self, sample: T) -> T {
+		sample * self.0
+	}
 }

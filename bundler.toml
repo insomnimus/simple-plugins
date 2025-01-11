@@ -13,5 +13,8 @@ name = "Simple Gain"
 [simple-filter]
 name = "Simple Filter"
 
+[simple-saturation]
+name = "Simple Saturation"
+
 [simple-tube]
 name = "Simple Tube"
