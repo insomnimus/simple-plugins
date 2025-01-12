@@ -95,7 +95,7 @@ impl Default for ChannelPlugin {
 
 			state: Box::new(State {
 				dc_mono: DcBlocker::new(44100.0),
-				dc_stereo: DcBlocker::new(f64x2::splat(44100.0)),
+				dc_stereo: DcBlocker::new(44100.0),
 				drive_mono: Toggle::new(Tube::new(44100.0), false, true),
 				drive_stereo: Toggle::new(Tube::new(44100.0), false, true),
 				eq_mono: Eq::new(44100.0, &params.eq),
@@ -182,7 +182,7 @@ impl Plugin for ChannelPlugin {
 
 		*self.state = State {
 			dc_mono: DcBlocker::new(self.sr),
-			dc_stereo: DcBlocker::new(self.sr_f64x2),
+			dc_stereo: DcBlocker::new(self.sr),
 			drive_mono: Toggle::new(Tube::new(self.sr).with_amount(drive), drive > 0.0, true),
 			drive_stereo: Toggle::new(Tube::new(self.sr).with_amount(drive), drive > 0.0, true),
 			eq_mono: Eq::new(self.sr, &self.params.eq),
@@ -200,17 +200,21 @@ impl Plugin for ChannelPlugin {
 	) -> ProcessStatus {
 		let drive = self.params.drive.value() as f64;
 
-		if buffer.channels() == 1 {
+		let hp_active = if buffer.channels() == 1 {
 			self.state.drive_mono.set_amount(drive);
 			self.state.drive_mono.toggle(drive > 0.0);
 
 			self.state.eq_mono.update_parameters(&self.params.eq);
+
+			self.state.eq_mono.hp_active()
 		} else {
 			self.state.drive_stereo.set_amount(drive);
 			self.state.drive_stereo.toggle(drive > 0.0);
 
 			self.state.eq_stereo.update_parameters(&self.params.eq);
-		}
+
+			self.state.eq_stereo.hp_active()
+		};
 
 		let input_gain = db_to_gain(self.params.input_gain.value());
 		let output_gain = db_to_gain(self.params.output_gain.value());
@@ -221,12 +225,12 @@ impl Plugin for ChannelPlugin {
 			(
 				&mut self.state.drive_mono,
 				&mut self.state.eq_mono,
-				&mut self.state.dc_mono,
+				Toggle::new(&mut self.state.dc_mono, !hp_active, false),
 			),
 			(
 				&mut self.state.drive_stereo,
 				&mut self.state.eq_stereo,
-				&mut self.state.dc_stereo,
+				Toggle::new(&mut self.state.dc_stereo, !hp_active, false),
 			),
 			buffer.as_slice(),
 		);

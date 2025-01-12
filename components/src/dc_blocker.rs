@@ -36,9 +36,9 @@ impl<T: SimdFloat> Component<T> for DcBlocker<T> {
 }
 
 impl<T: SimdFloat> DcBlocker<T> {
-	pub fn new(sample_rate: T) -> Self {
+	pub fn new(sample_rate: f64) -> Self {
 		Self {
-			filter: Simper::high_pass(sample_rate, T::splat(5.0), Simper::BUTTERWORTH_Q),
+			filter: Simper::high_pass(T::splat(sample_rate), T::splat(5.0), Simper::BUTTERWORTH_Q),
 		}
 	}
 

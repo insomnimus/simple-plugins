@@ -308,4 +308,8 @@ impl<T: SimdFloat> Eq<T> {
 		self.hp_active = !hp_off;
 		self.lp_active = !lp_off;
 	}
+
+	pub fn hp_active(&self) -> bool {
+		self.hp_active
+	}
 }
