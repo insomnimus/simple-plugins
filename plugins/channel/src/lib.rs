@@ -9,7 +9,6 @@ use components::{
 	f64x2,
 	ComponentMeta,
 	DcBlocker,
-	DoubleMono,
 	Toggle,
 	Tube,
 };
@@ -81,7 +80,7 @@ struct State {
 	dc_mono: DcBlocker<f64>,
 	dc_stereo: DcBlocker<f64x2>,
 	drive_mono: Toggle<Tube<f64>>,
-	drive_stereo: Toggle<DoubleMono<Tube<f64>>>,
+	drive_stereo: Toggle<Tube<f64x2>>,
 	eq_mono: Eq<f64>,
 	eq_stereo: Eq<f64x2>,
 }
@@ -98,7 +97,7 @@ impl Default for ChannelPlugin {
 				dc_mono: DcBlocker::new(44100.0),
 				dc_stereo: DcBlocker::new(f64x2::splat(44100.0)),
 				drive_mono: Toggle::new(Tube::new(44100.0), false, true),
-				drive_stereo: Toggle::new(DoubleMono::double(Tube::new(44100.0)), false, true),
+				drive_stereo: Toggle::new(Tube::new(44100.0), false, true),
 				eq_mono: Eq::new(44100.0, &params.eq),
 				eq_stereo: Eq::new(f64x2::splat(44100.0), &params.eq),
 			}),
@@ -179,15 +178,13 @@ impl Plugin for ChannelPlugin {
 		self.sr = buffer_config.sample_rate as _;
 		self.sr_f64x2 = f64x2::splat(buffer_config.sample_rate as _);
 
-		let drive = self.params.drive.value();
-		let mut tube = Tube::new(self.sr);
-		tube.set_amount(drive as _);
+		let drive = self.params.drive.value() as f64;
 
 		*self.state = State {
 			dc_mono: DcBlocker::new(self.sr),
 			dc_stereo: DcBlocker::new(self.sr_f64x2),
-			drive_mono: Toggle::new(tube.clone(), drive > 0.0, true),
-			drive_stereo: Toggle::new(DoubleMono::double(tube), drive > 0.0, true),
+			drive_mono: Toggle::new(Tube::new(self.sr).with_amount(drive), drive > 0.0, true),
+			drive_stereo: Toggle::new(Tube::new(self.sr).with_amount(drive), drive > 0.0, true),
 			eq_mono: Eq::new(self.sr, &self.params.eq),
 			eq_stereo: Eq::new(self.sr_f64x2, &self.params.eq),
 		};
@@ -208,26 +205,19 @@ impl Plugin for ChannelPlugin {
 			self.state.drive_mono.toggle(drive > 0.0);
 
 			self.state.eq_mono.update_parameters(&self.params.eq);
-			context.set_latency_samples(self.state.eq_mono.latency() as _);
 		} else {
-			self.state.drive_stereo.left.set_amount(drive);
-			self.state.drive_stereo.right.set_amount(drive);
+			self.state.drive_stereo.set_amount(drive);
 			self.state.drive_stereo.toggle(drive > 0.0);
 
 			self.state.eq_stereo.update_parameters(&self.params.eq);
-			context.set_latency_samples(self.state.eq_mono.latency() as _);
 		}
 
 		let input_gain = db_to_gain(self.params.input_gain.value());
 		let output_gain = db_to_gain(self.params.output_gain.value());
 
-		if input_gain != 1.0 {
-			for channel in buffer.as_slice().iter_mut() {
-				components::apply_gain(input_gain, channel);
-			}
-		}
+		components::apply_gain_mono_stereo(input_gain, buffer.as_slice());
 
-		components::apply_mono_stereo(
+		let latency = components::apply_mono_stereo(
 			(
 				&mut self.state.drive_mono,
 				&mut self.state.eq_mono,
@@ -241,12 +231,9 @@ impl Plugin for ChannelPlugin {
 			buffer.as_slice(),
 		);
 
-		if output_gain != 1.0 {
-			for channel in buffer.as_slice().iter_mut() {
-				components::apply_gain(output_gain, channel);
-			}
-		}
+		components::apply_gain_mono_stereo(output_gain, buffer.as_slice());
 
+		context.set_latency_samples(latency as _);
 		ProcessStatus::Normal
 	}
 }

@@ -4,8 +4,7 @@
 use std::sync::Arc;
 
 use components::{
-	Cascade,
-	Component,
+	f64x2,
 	ComponentMeta,
 	Tube,
 };
@@ -54,10 +53,20 @@ impl Default for TubeParams {
 	}
 }
 
-#[derive(Default)]
 struct TubePlugin {
 	params: Arc<TubeParams>,
-	tubes: Vec<Cascade<Tube<f64>, 4>>,
+	mono: Tube<f64>,
+	stereo: Tube<f64x2>,
+}
+
+impl Default for TubePlugin {
+	fn default() -> Self {
+		Self {
+			params: Arc::default(),
+			mono: Tube::new(44100.0),
+			stereo: Tube::new(44100.0),
+		}
+	}
 }
 
 impl ClapPlugin for TubePlugin {
@@ -116,22 +125,18 @@ impl Plugin for TubePlugin {
 	}
 
 	fn reset(&mut self) {
-		for t in &mut self.tubes {
-			t.reset();
-		}
+		self.mono.reset();
+		self.stereo.reset();
 	}
 
 	fn initialize(
 		&mut self,
-		layout: &AudioIOLayout,
+		_layout: &AudioIOLayout,
 		buffer_config: &BufferConfig,
 		_context: &mut impl InitContext<Self>,
 	) -> bool {
-		let channels = layout.main_input_channels.map_or(1, |x| x.get()).min(2);
-		self.tubes.clear();
-		self.tubes.extend(
-			(0..channels).map(|_| Cascade::from_fn(|_| Tube::new(buffer_config.sample_rate as _))),
-		);
+		self.stereo = Tube::new(buffer_config.sample_rate as _);
+		self.mono = Tube::new(buffer_config.sample_rate as _);
 
 		true
 	}
@@ -146,22 +151,16 @@ impl Plugin for TubePlugin {
 		let output_gain = db_to_gain(self.params.output_gain.value());
 		let amount = self.params.amount.value() as f64;
 
-		for (tube, samples) in self.tubes.iter_mut().zip(buffer.as_slice()) {
-			tube.apply(|tube| tube.set_amount(amount));
-			context.set_latency_samples(tube.latency() as _);
+		self.mono.set_amount(amount);
+		self.stereo.set_amount(amount);
 
-			if input_gain != 1.0 {
-				components::apply_gain(input_gain, samples);
-			}
+		components::apply_gain_mono_stereo(input_gain, buffer.as_slice());
 
-			for sample in samples.iter_mut() {
-				*sample = tube.process(*sample as _) as _;
-			}
+		let latency =
+			components::apply_mono_stereo(&mut self.mono, &mut self.stereo, buffer.as_slice());
+		context.set_latency_samples(latency as _);
 
-			if output_gain != 1.0 {
-				components::apply_gain(output_gain, samples);
-			}
-		}
+		components::apply_gain_mono_stereo(output_gain, buffer.as_slice());
 
 		ProcessStatus::Normal
 	}

@@ -75,7 +75,9 @@ impl<T> Component<T> for Noop {
 }
 
 /// Apply `mono` to the first channel if there's 1 channel, `stereo` to the first 2 channels if there's at least 2 channels, and do nothing if there are no channels.
-pub fn apply_mono_stereo<M, S>(mut mono: M, mut stereo: S, channels: &mut [&mut [f32]])
+///
+/// Returns the latency from either `mono` or `stereo`. Returns `0` when there are no channels.
+pub fn apply_mono_stereo<M, S>(mut mono: M, mut stereo: S, channels: &mut [&mut [f32]]) -> usize
 where
 	M: Component<f64>,
 	S: Component<f64x2>,
@@ -88,14 +90,18 @@ where
 				*l = val_l as _;
 				*r = val_r as _;
 			}
+
+			stereo.latency()
 		}
 
 		[mono_samples] => {
 			for sample in mono_samples.iter_mut() {
 				*sample = mono.process(*sample as f64) as _;
 			}
+
+			mono.latency()
 		}
 
-		_ => (),
+		_ => 0,
 	}
 }

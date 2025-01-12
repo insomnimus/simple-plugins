@@ -40,10 +40,19 @@ simd_runtime_generate! {
 	}
 }
 
-/// Efficiently apply gain to an f32 slice.
-/// `gain` is a voltage gain - not dB.
+/// Efficiently apply voltage gain to an f32 slice.
 pub fn apply_gain(gain: f32, samples: &mut [f32]) {
-	process_runtime_select(gain, samples);
+	if gain != 1.0 {
+		process_runtime_select(gain, samples);
+	}
+}
+
+/// Efficiently apply voltage gain to the first 2 channels in a slice of channels.
+#[inline]
+pub fn apply_gain_mono_stereo<T: AsMut<[f32]>>(gain: f32, channels: &mut [T]) {
+	for channel in channels.iter_mut().take(2) {
+		apply_gain(gain, channel.as_mut());
+	}
 }
 
 /// A clean gain [`Component`].

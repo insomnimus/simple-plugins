@@ -26,20 +26,23 @@ impl VisitMut for ReplaceFloat {
 
 		if let Expr::Lit(expr) = &node {
 			if let Lit::Float(float) = &expr.lit {
-				let val = float.base10_parse::<f64>().unwrap();
+				// Intentionally ignore converting literals with a literl (e.g. 2.0_f64)
+				if float.suffix().is_empty() {
+					let val = float.base10_parse::<f64>().unwrap();
 
-				*node = if val == 0.0 {
-					parse_quote!(#type_path::ZERO)
-				} else if val == 0.5 {
-					parse_quote!(#type_path::HALF)
-				} else if val == 1.0 {
-					parse_quote!(#type_path::ONE)
-				} else {
-					let unsuffixed: LitFloat = syn::parse_str(float.base10_digits()).unwrap();
-					parse_quote!(#type_path::splat(#unsuffixed))
-				};
+					*node = if val == 0.0 {
+						parse_quote!(#type_path::ZERO)
+					} else if val == 0.5 {
+						parse_quote!(#type_path::HALF)
+					} else if val == 1.0 {
+						parse_quote!(#type_path::ONE)
+					} else {
+						let unsuffixed: LitFloat = syn::parse_str(float.base10_digits()).unwrap();
+						parse_quote!(#type_path::splat(#unsuffixed))
+					};
 
-				return;
+					return;
+				}
 			}
 		}
 

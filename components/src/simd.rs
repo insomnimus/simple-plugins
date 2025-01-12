@@ -8,6 +8,7 @@
 use core::{
 	f32,
 	f64,
+	fmt::Debug,
 	ops::*,
 };
 
@@ -28,6 +29,7 @@ impl ScalarFloat for f64 {}
 /// Float abstraction: implemented for [`prim@f32`], [`prim@f64`], [`f32x4`] and [`f64x2`].
 pub trait SimdFloat:
 	Copy
+	+ Debug
 	+ Neg<Output = Self>
 	+ Add<Output = Self>
 	+ Sub<Output = Self>
