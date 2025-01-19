@@ -8,7 +8,6 @@ use std::sync::Arc;
 use components::{
 	f64x2,
 	ComponentMeta,
-	DcBlocker,
 	Toggle,
 	Tube,
 };
@@ -77,8 +76,8 @@ struct ChannelPlugin {
 }
 
 struct State {
-	dc_mono: DcBlocker<f64>,
-	dc_stereo: DcBlocker<f64x2>,
+	// dc_mono: DcBlocker<f64>,
+	// dc_stereo: DcBlocker<f64x2>,
 	drive_mono: Toggle<Tube<f64>>,
 	drive_stereo: Toggle<Tube<f64x2>>,
 	eq_mono: Eq<f64>,
@@ -94,12 +93,12 @@ impl Default for ChannelPlugin {
 			sr_f64x2: f64x2::splat(44100.0),
 
 			state: Box::new(State {
-				dc_mono: DcBlocker::new(44100.0),
-				dc_stereo: DcBlocker::new(44100.0),
+				// dc_mono: DcBlocker::new(44100.0),
+				// dc_stereo: DcBlocker::new(44100.0),
 				drive_mono: Toggle::new(Tube::new(44100.0), false, true),
 				drive_stereo: Toggle::new(Tube::new(44100.0), false, true),
 				eq_mono: Eq::new(44100.0, &params.eq),
-				eq_stereo: Eq::new(f64x2::splat(44100.0), &params.eq),
+				eq_stereo: Eq::new(44100.0, &params.eq),
 			}),
 
 			params: Arc::new(params),
@@ -159,8 +158,8 @@ impl Plugin for ChannelPlugin {
 	}
 
 	fn reset(&mut self) {
-		self.state.dc_mono.reset();
-		self.state.dc_stereo.reset();
+		// self.state.dc_mono.reset();
+		// self.state.dc_stereo.reset();
 
 		self.state.drive_mono.reset();
 		self.state.drive_stereo.reset();
@@ -181,12 +180,12 @@ impl Plugin for ChannelPlugin {
 		let drive = self.params.drive.value() as f64;
 
 		*self.state = State {
-			dc_mono: DcBlocker::new(self.sr),
-			dc_stereo: DcBlocker::new(self.sr),
+			// dc_mono: DcBlocker::new(self.sr),
+			// dc_stereo: DcBlocker::new(self.sr),
 			drive_mono: Toggle::new(Tube::new(self.sr).with_amount(drive), drive > 0.0, true),
 			drive_stereo: Toggle::new(Tube::new(self.sr).with_amount(drive), drive > 0.0, true),
 			eq_mono: Eq::new(self.sr, &self.params.eq),
-			eq_stereo: Eq::new(self.sr_f64x2, &self.params.eq),
+			eq_stereo: Eq::new(self.sr, &self.params.eq),
 		};
 
 		true
@@ -200,20 +199,16 @@ impl Plugin for ChannelPlugin {
 	) -> ProcessStatus {
 		let drive = self.params.drive.value() as f64;
 
-		let hp_active = if buffer.channels() == 1 {
+		if buffer.channels() == 1 {
 			self.state.drive_mono.set_amount(drive);
 			self.state.drive_mono.toggle(drive > 0.0);
 
 			self.state.eq_mono.update_parameters(&self.params.eq);
-
-			self.state.eq_mono.hp_active()
 		} else {
 			self.state.drive_stereo.set_amount(drive);
 			self.state.drive_stereo.toggle(drive > 0.0);
 
 			self.state.eq_stereo.update_parameters(&self.params.eq);
-
-			self.state.eq_stereo.hp_active()
 		};
 
 		let input_gain = db_to_gain(self.params.input_gain.value());
@@ -225,12 +220,12 @@ impl Plugin for ChannelPlugin {
 			(
 				&mut self.state.drive_mono,
 				&mut self.state.eq_mono,
-				Toggle::new(&mut self.state.dc_mono, !hp_active, false),
+				// Toggle::new(&mut self.state.dc_mono, !hp_active, false),
 			),
 			(
 				&mut self.state.drive_stereo,
 				&mut self.state.eq_stereo,
-				Toggle::new(&mut self.state.dc_stereo, !hp_active, false),
+				// Toggle::new(&mut self.state.dc_stereo, !hp_active, false),
 			),
 			buffer.as_slice(),
 		);

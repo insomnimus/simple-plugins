@@ -6,6 +6,7 @@ use std::sync::Arc;
 use components::{
 	Component,
 	ComponentMeta,
+	DcBlocker,
 	SimdFloat,
 	Simper,
 	SimperCoefficients,
@@ -145,6 +146,7 @@ pub struct Eq<T> {
 	hp_active: bool,
 	lp_active: bool,
 
+	dc_blocker: DcBlocker<T>,
 	hp: Simper<T>,
 	lp: Simper<T>,
 	low: Simper<T>,
@@ -168,6 +170,8 @@ impl<T: SimdFloat> ComponentMeta for Eq<T> {
 
 		if self.hp_active {
 			latency += self.hp.latency();
+		} else {
+			latency += self.dc_blocker.latency();
 		}
 		if self.lp_active {
 			latency += self.lp.latency();
@@ -177,6 +181,7 @@ impl<T: SimdFloat> ComponentMeta for Eq<T> {
 	}
 
 	fn reset(&mut self) {
+		self.dc_blocker.reset();
 		self.hp.reset();
 		self.lp.reset();
 		self.low.reset();
@@ -190,7 +195,7 @@ impl<T: SimdFloat> ComponentMeta for Eq<T> {
 impl<T: SimdFloat> Component<T> for Eq<T> {
 	fn process(&mut self, mut sample: T) -> T {
 		if self.bypassed {
-			return sample;
+			return self.dc_blocker.process(sample);
 		}
 
 		let bands = [
@@ -205,11 +210,14 @@ impl<T: SimdFloat> Component<T> for Eq<T> {
 			sample = band.process(sample);
 		}
 
-		if self.hp_active {
-			sample = self.hp.process(sample);
-		}
 		if self.lp_active {
 			sample = self.lp.process(sample);
+		}
+
+		if self.hp_active {
+			sample = self.hp.process(sample);
+		} else {
+			sample = self.dc_blocker.process(sample);
 		}
 
 		sample
@@ -217,7 +225,8 @@ impl<T: SimdFloat> Component<T> for Eq<T> {
 }
 
 impl<T: SimdFloat> Eq<T> {
-	pub fn new(sr: T, params: &EqParams) -> Self {
+	pub fn new(sample_rate: f64, params: &EqParams) -> Self {
+		let sr = T::splat(sample_rate);
 		let bell = |param: &FilterParam| {
 			Simper::bell(
 				sr,
@@ -232,6 +241,8 @@ impl<T: SimdFloat> Eq<T> {
 			sr,
 			hp_active: params.hp.value() > HPF_OFF_FQ,
 			lp_active: params.lp.value() < LPF_OFF_FQ,
+
+			dc_blocker: DcBlocker::new(sample_rate),
 			hp: Simper::high_pass(sr, T::splat(params.hp.value() as _), Simper::BUTTERWORTH_Q),
 			lp: Simper::low_pass(sr, T::splat(params.hp.value() as _), Simper::BUTTERWORTH_Q),
 
@@ -307,9 +318,5 @@ impl<T: SimdFloat> Eq<T> {
 
 		self.hp_active = !hp_off;
 		self.lp_active = !lp_off;
-	}
-
-	pub fn hp_active(&self) -> bool {
-		self.hp_active
 	}
 }
