@@ -3,7 +3,7 @@ resolver = "2"
 members = ["bundler", "components", "plugins/*", "util"]
 
 [workspace.package]
-version  = "0.4.0"
+version  = "0.4.1"
 rust-version = "1.80"
 edition = "2021"
 homepage = "https://github.com/insomnimus/simple-plugins"

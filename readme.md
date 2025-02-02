@@ -33,6 +33,8 @@ Don't use on mono sources; it'll only add delay, no depth enhancement.
 Parameters:
 - Depth: 0 to 40; amount of depth. The sweet spot is usually around 4.
 	* Currently this number is used to calculate the mid channel delay; a value of `4` means `4 / 40` of a millisecond, or `0.1ms`.
+- Alternate - Frequency: This is an alternate way to do the same thing. This parameter represents the frequency of an all-pass filter that is used to shift the phase of the mid channel.
+	* Using both this and the Depth parameter is probably going to result in bad quality, but you can go ahead and use them together if you feel like experimenting.
 
 ### Simple Channel Strip
 A work-in-progress channel strip. Currently has tube drive, a 5-band eq + high and low-pass filters, and input / output gain knobs.

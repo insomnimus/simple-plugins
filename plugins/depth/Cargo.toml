@@ -11,4 +11,5 @@ license.workspace = true
 crate-type = ["cdylib"]
 
 [dependencies]
+components.workspace = true
 nih_plug.workspace = true
