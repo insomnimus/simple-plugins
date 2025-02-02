@@ -122,7 +122,7 @@ impl Plugin for DepthPlugin {
 		_context: &mut impl ProcessContext<Self>,
 	) -> ProcessStatus {
 		let delay_ms = (self.params.depth.value() / MAX_DEPTH) * MAX_DELAY_MS;
-		let delay_len = (self.sample_rate * delay_ms * 1e-3) as usize;
+		let delay_len = f32::round(self.sample_rate * delay_ms * 1e-3) as usize;
 
 		if delay_len == 0 {
 			self.delay_buf.clear();
