@@ -13,7 +13,7 @@ use nih_plug::{
 
 nih_export_clap!(ClipperPlugin);
 
-const MAX_OVERSAMPLE: u8 = 3;
+const MAX_OVERSAMPLE: u8 = 8;
 
 #[derive(Debug, Params)]
 struct ClipperParams {
@@ -54,7 +54,7 @@ impl Default for ClipperParams {
 			oversample: BoolParam::new("Oversample", false).with_value_to_string(Arc::new(
 				|enabled| {
 					if enabled {
-						format!("{}x", u8::pow(2, MAX_OVERSAMPLE as _))
+						format!("{MAX_OVERSAMPLE}x")
 					} else {
 						"Off".to_owned()
 					}
@@ -194,9 +194,9 @@ impl Plugin for ClipperPlugin {
 				os.reset();
 			}
 			self.oversampler_was_active = true;
-		} else {
-			self.oversampler_was_active = false;
 		}
+
+		self.oversampler_was_active = oversample;
 
 		if oversample {
 			for (samples, oversampler) in buffer.as_slice().iter_mut().zip(&mut self.oversamplers) {

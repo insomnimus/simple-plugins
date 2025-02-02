@@ -1,4 +1,5 @@
 $plugins = @(
+	"depth"
 	"simple-channel"
 	"simple-clipper"
 	"simple-filter"

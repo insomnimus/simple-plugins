@@ -24,6 +24,16 @@ After building, you can copy `.clap` files in `target/bundled/` to your CLAP plu
 ## Included Plugins
 Note: There's more than what's listed here. You can consider what's not listed as being used during development for testing out ideas or code.
 
+### Depth
+Inspired by [this video from Dan Worrall](https://www.youtube.com/watch?v=uZ9WQDojQt8), Depth is a stereo depth enhancer.
+
+Use it on hard panned elements of your mix! Great on double tracked guitars.
+Don't use on mono sources; it'll only add delay, no depth enhancement.
+
+Parameters:
+- Depth: 0 to 40; amount of depth. The sweet spot is usually around 4.
+	* Currently this number is used to calculate the mid channel delay; a value of `4` means `4 / 40` of a millisecond, or `0.1ms`.
+
 ### Simple Channel Strip
 A work-in-progress channel strip. Currently has tube drive, a 5-band eq + high and low-pass filters, and input / output gain knobs.
 

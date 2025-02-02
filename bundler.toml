@@ -1,3 +1,6 @@
+[depth]
+name = "Depth"
+
 [oversample]
 name = "Oversample"
 
