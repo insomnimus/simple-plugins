@@ -4,6 +4,6 @@ set -ue
 
 cd -- "$(dirname -- "$0")"
 
-for plugin in depth simple-{channel,clipper,filter,gain}; do
+for plugin in depth simple-{channel,clipper,filter,gain} sundara-eq; do
 	cargo run --bin bundler -- bundle "$plugin" "$@"
 done

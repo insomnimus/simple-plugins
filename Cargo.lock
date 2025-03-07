@@ -87,7 +87,7 @@ checksum = "b048fb63fd8b5923fc5aa7b340d8e156aec7ec02f0c78fa8a6ddc2613f6f71de"
 
 [[package]]
 name = "bundler"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "nih_plug_xtask",
 ]
@@ -149,7 +149,7 @@ source = "git+https://github.com/robbert-vdh/clap-sys.git?branch=feature/cstr-ma
 
 [[package]]
 name = "components"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "nih_plug",
  "rubato",
@@ -232,7 +232,7 @@ checksum = "d0a5c400df2834b80a4c3327b3aad3a4c4cd4de0629063962b03235697506a28"
 
 [[package]]
 name = "depth"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -487,7 +487,7 @@ checksum = "1261fe7e33c73b354eab43b1273a57c8f967d0391e80353e51f764ac02cf6775"
 
 [[package]]
 name = "oversample"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -749,7 +749,7 @@ dependencies = [
 
 [[package]]
 name = "simple-channel"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -757,7 +757,7 @@ dependencies = [
 
 [[package]]
 name = "simple-clipper"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -766,7 +766,7 @@ dependencies = [
 
 [[package]]
 name = "simple-filter"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -774,7 +774,7 @@ dependencies = [
 
 [[package]]
 name = "simple-gain"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -782,7 +782,7 @@ dependencies = [
 
 [[package]]
 name = "simple-tube"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "components",
  "nih_plug",
@@ -799,6 +799,14 @@ name = "strength_reduce"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fe895eb47f22e2ddd4dabc02bce419d2e643c8e3b585c78158b349195bc24d82"
+
+[[package]]
+name = "sundara-eq"
+version = "0.4.1"
+dependencies = [
+ "components",
+ "nih_plug",
+]
 
 [[package]]
 name = "syn"
@@ -936,7 +944,7 @@ checksum = "adb9e6ca4f869e1180728b7950e35922a7fc6397f7b641499e8f3ef06e50dc83"
 
 [[package]]
 name = "util"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "syn 2.0.95",
 ]

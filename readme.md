@@ -69,3 +69,6 @@ Stereo parameters:
 - Gain: Gain to apply on both channels
 - Left: Gain to apply on the left channel
 - Right: Gain to apply on the right channel
+
+### Sundara Eq
+This is a static eq monitoring plugin for the HIFIMAN Sundara headphones that I use. It has no parameters; it's just some corrective eq.
