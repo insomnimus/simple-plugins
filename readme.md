@@ -36,6 +36,9 @@ Parameters:
 - Alternate - Frequency: This is an alternate way to do the same thing. This parameter represents the frequency of an all-pass filter that is used to shift the phase of the mid channel.
 	* Using both this and the Depth parameter is probably going to result in bad quality, but you can go ahead and use them together if you feel like experimenting.
 
+### Mono
+This plugin turns stereo into mono using one of 3 modes: mix (mix left and right equally), left (always prefer the left channel) or right (always prefer the right channel).
+
 ### Simple Channel Strip
 A work-in-progress channel strip. Currently has tube drive, a 5-band eq + high and low-pass filters, and input / output gain knobs.
 
