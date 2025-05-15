@@ -5,7 +5,7 @@ $plugins = @(
 	"simple-clipper"
 	"simple-filter"
 	"simple-gain"
-	"sundara-eq"
+	"sundara-monitors"
 )
 
 foreach($plugin in $plugins) {

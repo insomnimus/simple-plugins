@@ -105,3 +105,12 @@ where
 		_ => 0,
 	}
 }
+
+pub fn apply_stereo<S: Component<f64x2>>(mut processor: S, left: &mut [f32], right: &mut [f32]) {
+	for (l, r) in left.iter_mut().zip(right.iter_mut()) {
+		let sample = f64x2::new([*l as f64, *r as f64]);
+		let [val_l, val_r] = processor.process(sample).value();
+		*l = val_l as _;
+		*r = val_r as _;
+	}
+}
