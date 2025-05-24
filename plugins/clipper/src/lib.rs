@@ -5,7 +5,7 @@ mod simd;
 
 use std::sync::Arc;
 
-use components::Oversampler1 as Oversampler;
+use components::AdOversampler2 as Oversampler;
 use nih_plug::{
 	prelude::*,
 	util::db_to_gain,
@@ -13,7 +13,7 @@ use nih_plug::{
 
 nih_export_clap!(ClipperPlugin);
 
-const MAX_OVERSAMPLE: u8 = 8;
+const MAX_OVERSAMPLE: u8 = 4;
 
 #[derive(Debug, Params)]
 struct ClipperParams {
@@ -149,21 +149,14 @@ impl Plugin for ClipperPlugin {
 
 		if self.oversamplers.len() != channels as usize {
 			self.oversamplers.clear();
-			self.oversamplers.extend((0..channels).map(|_| {
-				Oversampler::new(block_size, buffer_config.sample_rate as _, MAX_OVERSAMPLE)
-			}));
-		} else if self.oversamplers[0].orig_sample_rate() == buffer_config.sample_rate as usize
-			&& self.oversamplers[0].block_size() == block_size
-		{
-			// Saves us some reallocations.
-			for os in &mut self.oversamplers {
-				os.reset();
-			}
+			self.oversamplers.extend(
+				(0..channels).map(|_| Oversampler::new(block_size, MAX_OVERSAMPLE, MAX_OVERSAMPLE)),
+			);
 		} else {
 			self.oversamplers.clear();
-			self.oversamplers.extend((0..channels).map(|_| {
-				Oversampler::new(block_size, buffer_config.sample_rate as _, MAX_OVERSAMPLE)
-			}));
+			self.oversamplers.extend(
+				(0..channels).map(|_| Oversampler::new(block_size, MAX_OVERSAMPLE, MAX_OVERSAMPLE)),
+			);
 		}
 
 		true
